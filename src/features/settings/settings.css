@@ -31,3 +31,44 @@
   color: var(--text-subhead);
   font-size: var(--fs-body-14);
 }
+
+/* Household sharing */
+.settings__hint--small {
+  font-size: var(--fs-caption);
+}
+.settings__text {
+  font-size: var(--fs-body-15);
+  line-height: 1.4;
+  color: var(--text-ink);
+}
+.settings__row-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 16px;
+}
+.settings__text-button {
+  align-self: flex-start;
+  min-height: var(--tap);
+  font-size: var(--fs-body-14);
+  font-weight: 600;
+  color: var(--brand-teal);
+}
+.settings__text-button:disabled {
+  opacity: 0.5;
+}
+.settings__join {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.settings__steps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-left: 22px;
+  list-style: decimal;
+  font-size: var(--fs-body-15);
+  line-height: 1.4;
+  color: var(--text-ink);
+}

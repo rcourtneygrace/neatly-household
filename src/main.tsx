@@ -6,6 +6,7 @@ import './styles/base.css';
 import App from './App';
 import { ensureSeeded } from './data/seed';
 import { db } from './data/db';
+import { startSyncLoop } from './data/sync';
 
 async function start() {
   // Ask the browser to keep our data even when storage runs low.
@@ -15,6 +16,7 @@ async function start() {
     /* not supported; data is still saved */
   }
   await ensureSeeded();
+  startSyncLoop();
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <App />

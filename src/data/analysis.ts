@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, nowISO, stamp } from './db';
+import { db, nowISO, occurrenceId, stamp } from './db';
 import type { Department, Household, Task } from './types';
 import { addDays, type Day } from '../domain/dates';
 import { buildToday, instancesAround, type Instance, type PlanCalendar } from '../domain/schedule';
@@ -59,7 +59,7 @@ export async function giveItADay(task: Task, day: Day, cal: PlanCalendar): Promi
     if (existing) await db.occurrences.update(existing.id, { ...changes, updatedAt: nowISO() });
     else
       await db.occurrences.add(
-        stamp({ taskId: task.id, periodStart: inst.key, periodEnd: inst.end, dueDate: inst.due, status: 'open' as const, ...changes }),
+        stamp({ id: occurrenceId(task.id, inst.key), taskId: task.id, periodStart: inst.key, periodEnd: inst.end, dueDate: inst.due, status: 'open' as const, ...changes }),
       );
   });
 }

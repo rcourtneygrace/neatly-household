@@ -1,0 +1,8 @@
+name = "neatly-household-sync"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "neatly-household-sync"
+database_id = "6a99cc87-a9ac-4bda-96a9-e2eab5388132"

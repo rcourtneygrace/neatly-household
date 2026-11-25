@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, nowISO, stamp } from './db';
+import { dayLogId, db, nowISO, occurrenceId, stamp } from './db';
 import type { DayLog, Department, Household, Occurrence, RoutineTemplate, Task, VacationPeriod } from './types';
 import { addDays, type Day } from '../domain/dates';
 import type { Instance, TodayItem } from '../domain/schedule';
@@ -47,6 +47,7 @@ async function upsert(taskId: string, inst: Instance, changes: Partial<Occurrenc
   } else {
     await db.occurrences.add(
       stamp({
+        id: occurrenceId(taskId, inst.key),
         taskId,
         periodStart: inst.key,
         periodEnd: inst.end,
@@ -200,6 +201,7 @@ async function dayLog(date: Day): Promise<DayLog> {
   const existing = await db.dayLogs.where('date').equals(date).first();
   if (existing) return existing;
   const row = stamp({
+    id: dayLogId(date),
     date,
     openingStatus: 'open' as const,
     closingStatus: 'open' as const,

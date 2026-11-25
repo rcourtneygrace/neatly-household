@@ -10,6 +10,7 @@ import type {
   Task,
   VacationPeriod,
 } from './types';
+import { installOutbox, type OutboxEntry } from './outbox';
 
 export class NeatlyDB extends Dexie {
   household!: EntityTable<Household, 'id'>;
@@ -21,6 +22,9 @@ export class NeatlyDB extends Dexie {
   vacations!: EntityTable<VacationPeriod, 'id'>;
   records!: EntityTable<RecordEntry, 'id'>;
   photos!: EntityTable<Photo, 'id'>;
+  /** Sync bookkeeping: rows changed on this phone and not yet sent, and the sync settings. */
+  syncOutbox!: EntityTable<OutboxEntry, 'key'>;
+  syncMeta!: EntityTable<{ key: string; value: unknown }, 'key'>;
 
   constructor(name = 'neatly-household') {
     super(name);
@@ -36,6 +40,11 @@ export class NeatlyDB extends Dexie {
       records: 'id, category, updatedAt',
       photos: 'id, recordId',
     });
+    this.version(2).stores({
+      syncOutbox: 'key',
+      syncMeta: 'key',
+    });
+    installOutbox(this);
   }
 }
 
@@ -47,6 +56,16 @@ export function newId(): string {
 
 export function nowISO(): string {
   return new Date().toISOString();
+}
+
+/** One occurrence per task and period, with the same id on every phone, so shared phones merge it. */
+export function occurrenceId(taskId: string, periodStart: string): string {
+  return `${taskId}|${periodStart}`;
+}
+
+/** One day log per date, with the same id on every phone. */
+export function dayLogId(date: string): string {
+  return `day|${date}`;
 }
 
 export function stamp<T extends object>(row: T): T & { id: string; createdAt: string; updatedAt: string; deletedAt: null } {

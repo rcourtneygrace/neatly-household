@@ -12,6 +12,7 @@ import { exportBackup, importBackup, shareOrDownload } from '../../data/backup';
 import { loadSampleRecords } from '../../data/sampleRecords';
 import { loadSuggestedTasks } from '../../data/suggestedTasks';
 import type { BusinessHours } from '../../data/types';
+import { SharingSection, TellSomeoneSection } from './SharingSection';
 import '../records/records.css';
 import '../records/record-form.css';
 import './settings.css';
@@ -38,7 +39,7 @@ export function SettingsScreen() {
       setName(household.name);
       setHours(household.businessHours);
     }
-  }, [household?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [household?.id, household?.name]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!household || !hours) return null;
 
@@ -89,6 +90,8 @@ export function SettingsScreen() {
         </label>
       </section>
 
+      <SharingSection onStatus={setStatus} />
+
 
       <section className="settings__group">
         <h2 className="settings__heading">Business hours</h2>
@@ -104,7 +107,7 @@ export function SettingsScreen() {
       <section className="settings__group">
         <h2 className="settings__heading">Backup</h2>
         <p className="settings__hint">
-          Everything lives only on this phone. Save a backup file now and then, for example to Files or iCloud Drive.
+          Save a backup file now and then, for example to Files or iCloud Drive.
         </p>
         <button
           type="button"
@@ -136,6 +139,8 @@ export function SettingsScreen() {
           }}
         />
       </section>
+
+      <TellSomeoneSection onStatus={setStatus} />
 
       <section className="settings__group">
         <h2 className="settings__heading">Try it out</h2>
