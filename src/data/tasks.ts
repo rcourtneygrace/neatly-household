@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db, nowISO, stamp } from './db';
 import type { Department, RoutineTemplate, Task } from './types';
 import { cleanTiming, timingIsComplete, type Timing } from '../domain/tasks';
+import { toDay } from '../domain/dates';
 
 /* ---------- Reading ---------- */
 
@@ -54,11 +55,19 @@ export async function saveTask(draft: TaskDraft, existingId?: string): Promise<s
     paused: draft.paused,
     ...timing,
   };
+  const today = toDay(new Date());
   if (existingId) {
-    await db.tasks.update(existingId, { ...fields, updatedAt: nowISO() });
+    const before = await db.tasks.get(existingId);
+    // Resuming a paused task, or changing when it happens, starts it fresh: nothing earlier is carried over.
+    const fresh =
+      (before?.paused && !draft.paused) ||
+      before?.cadence !== timing.cadence ||
+      before?.timingMode !== timing.timingMode ||
+      JSON.stringify(before?.timingValue) !== JSON.stringify(timing.timingValue);
+    await db.tasks.update(existingId, { ...fields, ...(fresh ? { activeSince: today } : {}), updatedAt: nowISO() });
     return existingId;
   }
-  const row = stamp({ ...fields, steps: [] as string[], recordId: null, archived: false });
+  const row = stamp({ ...fields, steps: [] as string[], recordId: null, archived: false, activeSince: today });
   await db.tasks.add(row);
   return row.id;
 }

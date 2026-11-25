@@ -100,3 +100,34 @@
   outline: 2px solid var(--brand-teal);
   outline-offset: 1px;
 }
+
+/* Status tags (Today, Build Your Day, task preview): clay outline, always with a dot and a word */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border: 1px solid var(--clay-solid-dark);
+  border-radius: 999px;
+  background: var(--clay-bg);
+  font-size: var(--fs-small);
+  font-weight: 600;
+  color: var(--clay-text);
+  white-space: nowrap;
+}
+.tag__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--clay-solid);
+}
+.tag--priority {
+  border-color: var(--status-priority);
+  background: var(--status-priority);
+  color: var(--surface-white);
+  font-weight: 700;
+}
+.tag--priority .tag__dot {
+  background: var(--surface-white);
+}
+

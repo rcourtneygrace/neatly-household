@@ -76,6 +76,8 @@ export interface Task extends SyncFields {
   recordId?: ID | null;
   paused: boolean;
   archived: boolean;
+  /** Day the task was added or last un-paused; nothing before it is carried over. */
+  activeSince?: string | null;
 }
 
 export type OccurrenceStatus = 'open' | 'done' | 'deferred' | 'carriedOver';

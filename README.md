@@ -23,7 +23,7 @@ In the repo: Settings → Pages → Source: **GitHub Actions**.
 src/ui/          shared components (NavBar, PageHeader, SectionHeader, PrimaryButton, record rows, sheets)
 src/features/    one folder per tab: today, plan, records, analysis, settings
 src/data/        Dexie (IndexedDB) schema, data access, photos, backup. No React screens here.
-src/domain/      pure logic (records, task schedules and seasons; Today and Analysis later), unit-tested
+src/domain/      pure logic, unit-tested: records, task schedules and seasons, the scheduling engine (schedule.ts)
 src/styles/      design tokens from Figma + base styles
 ```
 
@@ -33,8 +33,8 @@ All data stays on the phone (IndexedDB). Every row has `id/createdAt/updatedAt/d
 
 1. App shell ✅
 2. Records ✅
-3. Plan ✅ (review with owner): tasks, Opening/Closing, Plan Settings, Seasons, "Suggested tasks"
-4. Today: sections, tags, check-off, Build Your Day
+3. Plan ✅: tasks, Opening/Closing, Plan Settings, Seasons, "Suggested tasks"
+4. Today ✅ (review with owner): Opening/Closing, Daily, In Progress, Coming Soon, tags, check-off, Defer, Build Your Day, after hours
 5. Analysis: all five Figma screens
 6. Setup flow, vacation mode: **waiting on product spec v1**
 
@@ -47,4 +47,9 @@ All data stays on the phone (IndexedDB). Every row has `id/createdAt/updatedAt/d
 - Text sizes: Figma's Micro/11 and Kicker/10 render at 12px to meet the spec's 12px minimum.
 - Plan: a weekly task with a specific day picks one day (as in Figma). Plan Settings and Seasons open from Settings.
 - Plan header keeps the NEATLY. HOUSEHOLD wordmark like Records (the Figma Plan frame has none).
+- Today rules (domain/schedule.ts): a task with a set day shows 4 days before it, Heads up 2 days before, Today on the day,
+  Priority once the day has passed. "Every week/month/…" tasks show all period, untagged. Anything left undone is carried
+  over as Priority. Deferred tasks are set aside with a reason and not carried over. Daily tasks roll over as Priority
+  only after a day the household was opened. Closing appears 60 minutes before the close time.
+- Tap a task's name on Today for: Do it today, Defer, Edit task.
 - App icon is a placeholder (`public/icon-*.png`) until a real one exists.
