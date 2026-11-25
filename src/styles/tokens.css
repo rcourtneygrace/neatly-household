@@ -74,6 +74,8 @@
 
   /* Layout */
   --gutter: 16px;
+  /* Top of every screen: the phone's status area plus room so the top isn't under the status bar blur */
+  --safe-top: calc(env(safe-area-inset-top) + 20px);
   --tap: 44px;
   --nav-height: calc(54px + env(safe-area-inset-bottom));
 }
