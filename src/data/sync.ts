@@ -9,7 +9,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db';
 import { markRemote, setLocalChangeListener, SYNCED_TABLES, type OutboxEntry, type SyncedTable } from './outbox';
 
-export const SYNC_URL: string = import.meta.env.VITE_SYNC_URL ?? 'https://neatly-household-sync.rcourtneygrace.workers.dev';
+export const SYNC_URL: string = import.meta.env.VITE_SYNC_URL ?? 'https://neatly-household-sync.neatly-household.workers.dev';
 /** Where the app lives; invite links and the "try Neatly" link point here. */
 export const APP_URL = 'https://rcourtneygrace.github.io/neatly-household/';
 

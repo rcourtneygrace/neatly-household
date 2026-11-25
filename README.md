@@ -72,3 +72,14 @@ All data stays on the phone (IndexedDB). Every row has `id/createdAt/updatedAt/d
 
 - Build Your Day doc mentions an "overload check … as already specified": not built, nothing specified yet.
 - "Opening and Closing consistency card" and a separate Opening/Closing deferral: not built, noted only.
+
+## Household sharing (sync)
+
+- Server: `sync-server/` (Cloudflare Worker + D1 `neatly-household-sync`), live at
+  https://neatly-household-sync.neatly-household.workers.dev. Deploy with `cd sync-server && npx wrangler@4 deploy`.
+- An invite key `<householdId>.<secret>` is the only credential; the invite link is `#/join/<key>`.
+- Every write to a synced table is noted in `syncOutbox` by a Dexie middleware (`src/data/outbox.ts`).
+  `src/data/sync.ts` sends the outbox and fetches newer rows; the newest change to a row wins.
+- Occurrences and day logs use the same id on every phone (`occurrenceId`, `dayLogId`) so they merge.
+- On iPhone, Safari and the Home Screen app keep separate data, so the join page explains pasting the invite in Settings.
+- Not synced: whole-table clears (backup restore only sends the restored rows), and localStorage preferences.
