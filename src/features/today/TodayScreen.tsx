@@ -148,7 +148,7 @@ function Today({ data, now, T }: { data: TodayData; now: Date; T: Day }) {
           {showClosing && <RoutineCard routine={data.routines.closing} type="closing" onComplete={onMarkClosing} />}
 
           {view.daily.length > 0 && (
-            <DailySection items={view.daily} deptName={deptName} T={T} onMore={(i) => setActionsFor(i)} />
+            <DailySection items={view.daily} deptName={deptName} T={T} />
           )}
 
           <section className="today-section" aria-labelledby="in-progress">
@@ -408,17 +408,8 @@ function TaskCheckRow({
 
 /* ---------- Daily Tasks (Figma 16:2059, collapsed 16:2221) ---------- */
 
-function DailySection({
-  items,
-  deptName,
-  T,
-  onMore,
-}: {
-  items: TodayItem[];
-  deptName: (id: string) => string;
-  T: Day;
-  onMore: (i: TodayItem) => void;
-}) {
+/** Daily tasks are simpler: just the check, no actions sheet (owner's call). */
+function DailySection({ items, deptName, T }: { items: TodayItem[]; deptName: (id: string) => string; T: Day }) {
   const [showDone, setShowDone] = useState(false);
   const doneCount = items.filter((i) => i.done).length;
   const allDone = doneCount === items.length;
@@ -455,7 +446,6 @@ function DailySection({
               item={item}
               department={deptName(item.task.departmentId)}
               T={T}
-              onMore={() => onMore(item)}
             />
           ))}
           {allDone && (

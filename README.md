@@ -55,7 +55,8 @@ All data stays on the phone (IndexedDB). Every row has `id/createdAt/updatedAt/d
 - Today shows only today's list: tasks fixed for today (a set day that is today, or pushed there), Build Your Day
   picks (unfinished picks carry over as "Carried over") and daily tasks. Everything else is offered in Build Your Day:
   weekly set days up to 2 days ahead, monthly up to 4, plus "every …" tasks and Priority (missed) ones, max 5 rows a step.
-- Tap a task row (not its circle) for: Push to a later date, Skip this <cycle> (with an optional reason), Edit task.
+- Daily tasks have only their check: no actions sheet.
+- Tap an In Progress task row (not its circle) for: Push to a later date, Skip this <cycle> (with an optional reason), Edit task.
   Skips are stored as Occurrence.status "deferred"; only "Not needed this time", "No time" and "Other" can lead to a
   "change how often" suggestion.
 - Vacation mode (Settings, first card): Today shows "Out of office"; anything whose window ends during the trip is
@@ -66,3 +67,8 @@ All data stays on the phone (IndexedDB). Every row has `id/createdAt/updatedAt/d
   "Keep it …" hides a suggestion on this phone; "Not now" until the app is reopened. Monthly balance suggests moving up
   to 2 tasks when one week has 3+ more than the lightest.
 - App icon is a placeholder (`public/icon-*.png`) until a real one exists.
+
+## Open notes (owner will decide while testing)
+
+- Build Your Day doc mentions an "overload check … as already specified": not built, nothing specified yet.
+- "Opening and Closing consistency card" and a separate Opening/Closing deferral: not built, noted only.
