@@ -1,0 +1,191 @@
+/* ---------- Plan Settings (Figma 16:2803) ---------- */
+.link-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--border-input);
+  border-radius: 10px;
+  background: var(--surface-white);
+  font-size: var(--fs-body-15);
+  color: var(--text-ink);
+  text-decoration: none;
+}
+.link-field .icon {
+  color: var(--text-muted);
+}
+.plan-settings__toggle .toggle-row {
+  min-height: 72px;
+  background: var(--surface-card);
+}
+
+/* ---------- Seasons (Figma 16:2695) ---------- */
+.segmented {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--surface-card);
+}
+.segmented__item {
+  flex: 1;
+  min-height: 40px;
+  border-radius: 8px;
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.segmented__item.is-selected {
+  background: var(--surface-white);
+  box-shadow: 0 1px 1px rgba(31, 41, 38, 0.15);
+  font-weight: 600;
+  color: var(--text-ink);
+}
+.seasons__hint {
+  padding: 6px 0 14px;
+  font-size: var(--fs-small);
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+
+.season-bar {
+  display: flex;
+  padding-bottom: 22px;
+}
+.season-bar__seg {
+  position: relative;
+  height: 10px;
+  min-width: 0;
+}
+.season-bar__seg--spring {
+  background: var(--surface-tint);
+}
+.season-bar__seg--summer {
+  background: var(--clay-bg);
+}
+.season-bar__seg--fall {
+  background: var(--clay-border);
+}
+.season-bar__seg--winter {
+  background: var(--border-input);
+}
+.season-bar__seg.is-open {
+  outline: 2px solid var(--brand-teal);
+  outline-offset: -2px;
+}
+.season-bar__label {
+  position: absolute;
+  top: 15px;
+  left: 0;
+  font-size: var(--fs-micro);
+  font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.season-bar__seg.is-open .season-bar__label {
+  font-weight: 700;
+  color: var(--text-ink);
+}
+
+.season-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.season-card {
+  border: 1px solid var(--border-default);
+  border-radius: 14px;
+  background: var(--surface-white);
+  overflow: hidden;
+}
+.season-card.is-open {
+  border-color: var(--brand-teal);
+  background: var(--surface-card);
+}
+.season-card__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 64px;
+  padding: 8px 14px;
+  text-align: left;
+  color: var(--text-muted);
+}
+.season-dot {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  border-radius: 6px;
+}
+.season-dot--spring {
+  background: var(--teal-500);
+}
+.season-dot--summer {
+  background: var(--clay-solid);
+}
+.season-dot--fall {
+  background: var(--clay-solid-dark);
+}
+.season-dot--winter {
+  background: var(--text-muted);
+}
+.season-card__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.season-card__name {
+  font-size: var(--fs-body-15);
+  font-weight: 600;
+  color: var(--text-ink);
+}
+.season-card__range {
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+}
+.season-card__body {
+  padding: 0 14px 14px;
+}
+.season-card__selects {
+  display: flex;
+  gap: 10px;
+}
+.season-card__selects .field {
+  flex: 1;
+  min-width: 0;
+  padding-bottom: 0;
+}
+.season-card__selects .select-wrap select {
+  border-color: var(--brand-teal);
+}
+.season-card__note {
+  padding-top: 8px;
+  font-size: var(--fs-small);
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+.seasons__notice {
+  margin-top: 12px;
+  padding: 13px 15px;
+  border: 1px solid var(--clay-border-light);
+  border-radius: 12px;
+  background: var(--clay-bg-light);
+  font-size: var(--fs-caption);
+  line-height: 1.45;
+  color: var(--clay-deep);
+}
+.reset-button {
+  flex: 1;
+  min-height: var(--tap);
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}

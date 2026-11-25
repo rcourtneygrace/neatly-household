@@ -23,7 +23,7 @@ In the repo: Settings → Pages → Source: **GitHub Actions**.
 src/ui/          shared components (NavBar, PageHeader, SectionHeader, PrimaryButton, record rows, sheets)
 src/features/    one folder per tab: today, plan, records, analysis, settings
 src/data/        Dexie (IndexedDB) schema, data access, photos, backup. No React screens here.
-src/domain/      pure logic (records today; scheduling and analysis later), unit-tested
+src/domain/      pure logic (records, task schedules and seasons; Today and Analysis later), unit-tested
 src/styles/      design tokens from Figma + base styles
 ```
 
@@ -32,8 +32,8 @@ All data stays on the phone (IndexedDB). Every row has `id/createdAt/updatedAt/d
 ## Build phases
 
 1. App shell ✅
-2. Records ✅ (review with owner)
-3. Plan: tasks, Plan Settings, Seasons, "Suggested tasks"
+2. Records ✅
+3. Plan ✅ (review with owner): tasks, Opening/Closing, Plan Settings, Seasons, "Suggested tasks"
 4. Today: sections, tags, check-off, Build Your Day
 5. Analysis: all five Figma screens
 6. Setup flow, vacation mode: **waiting on product spec v1**
@@ -45,4 +45,6 @@ All data stays on the phone (IndexedDB). Every row has `id/createdAt/updatedAt/d
 - Hosting: GitHub Pages. Hash routing (`#/records`) so deep links work without server rewrites.
 - Backup: Settings → Save a backup / Restore (local JSON file, photos included).
 - Text sizes: Figma's Micro/11 and Kicker/10 render at 12px to meet the spec's 12px minimum.
+- Plan: a weekly task with a specific day picks one day (as in Figma). Plan Settings and Seasons open from Settings.
+- Plan header keeps the NEATLY. HOUSEHOLD wordmark like Records (the Figma Plan frame has none).
 - App icon is a placeholder (`public/icon-*.png`) until a real one exists.

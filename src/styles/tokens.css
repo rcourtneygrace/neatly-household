@@ -45,6 +45,9 @@
   --teal-600: #4f9b92;
   --teal-500: #5fa59c;
   --teal-200: #b7dad5;
+  --teal-700: #0a5c53;     /* selected choice text (Figma extra/#244a44) */
+  --surface-icon: #e8f0f1; /* Opening/Closing icon tile (Figma extra/#e8efec) */
+  --clay-border-light: #f3d5c7;
 
   /* Type: Figma text styles. The spec sets a 12px minimum, so Micro/11 and Kicker/10 render at 12px. */
   --font: 'Figtree Variable', 'Figtree', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;

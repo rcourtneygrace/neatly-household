@@ -1,0 +1,90 @@
+/* ---------- Edit Opening / Closing (Figma 16:1876) ---------- */
+.steps-card {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 4px 16px;
+  border: 1px solid var(--border-default);
+  border-radius: 14px;
+  background: var(--surface-card);
+  list-style: none;
+}
+.step-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 56px;
+  border-top: 1px solid var(--border-default);
+  background: var(--surface-card);
+}
+.step-row:first-child {
+  border-top: none;
+}
+.step-row.is-dragging {
+  position: relative;
+  z-index: 1;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+}
+.step-row__handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: var(--tap);
+  margin-left: -6px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+  touch-action: none;
+  cursor: grab;
+}
+.step-row__text {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 0;
+  font-size: var(--fs-body-14);
+  color: var(--text-ink);
+  overflow-wrap: anywhere;
+}
+.step-row__input {
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1.5px solid var(--brand-teal);
+  border-radius: 8px;
+  background: var(--surface-white);
+  font-size: var(--fs-body-15);
+}
+.step-row__input:focus {
+  outline: none;
+}
+.step-row__action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tap);
+  height: var(--tap);
+  margin-right: -8px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+.steps-empty {
+  padding: 16px 4px;
+  font-size: var(--fs-body-15);
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+.add-step {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 52px;
+  margin-top: 12px;
+  border: 1px solid var(--text-muted);
+  border-radius: 12px;
+  background: var(--surface-white);
+  font-size: var(--fs-body-14);
+  color: var(--text-ink);
+}

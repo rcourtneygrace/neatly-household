@@ -1,0 +1,206 @@
+@import '../records/records.css';
+
+/* ---------- Plan overview (Figma 16:2341) ---------- */
+.plan-screen {
+  padding-bottom: calc(var(--nav-height) + 100px);
+}
+.plan-routines {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 12px;
+}
+.routine-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 88px;
+  padding: 10px 16px;
+  border-radius: 16px;
+  background: var(--surface-row);
+  color: var(--text-ink);
+  text-decoration: none;
+}
+.routine-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  flex-shrink: 0;
+  border-radius: 14px;
+  background: var(--surface-icon);
+  color: var(--brand-teal);
+}
+.routine-card__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.routine-card__title {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+.routine-card__meta {
+  font-size: var(--fs-body-14);
+  color: var(--text-muted);
+}
+.routine-card__required {
+  font-weight: 600;
+  color: var(--text-kicker);
+}
+.routine-card__chevron {
+  color: var(--text-muted);
+}
+
+.plan-controls {
+  padding-top: 14px;
+}
+
+.plan-list {
+  padding-top: 14px;
+}
+.plan-group__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+  color: var(--text-subhead);
+}
+.plan-group__header h2 {
+  font-size: var(--fs-body-15);
+  font-weight: 700;
+}
+.plan-group__header span {
+  font-size: var(--fs-body-14);
+}
+.plan-group__rows {
+  margin: 0;
+  padding: 0 0 8px;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.task-row {
+  display: flex;
+  align-items: center;
+  min-height: 78px;
+  padding: 10px 8px 10px 16px;
+  border-radius: var(--r-row);
+  background: var(--surface-row);
+  color: var(--text-ink);
+  text-decoration: none;
+}
+.task-row__text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+.task-row__name {
+  font-size: var(--fs-body-17);
+}
+.task-row__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-size: var(--fs-body-14);
+  color: var(--text-muted);
+}
+.task-row__dept {
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--surface-white);
+  color: var(--text-subhead);
+}
+.task-row__paused {
+  padding: 1px 8px;
+  border: 1px solid var(--border-input);
+  border-radius: 999px;
+  font-size: var(--fs-small);
+  color: var(--text-subhead);
+}
+.task-row__chevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 44px;
+  color: var(--text-muted);
+}
+
+.plan-empty {
+  padding: 24px 8px;
+  text-align: center;
+  font-size: var(--fs-body-15);
+  color: var(--text-muted);
+}
+.plan-start {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 28px;
+}
+.plan-start__title {
+  font-size: var(--fs-body-17);
+  font-weight: 600;
+}
+.plan-start__text {
+  font-size: var(--fs-body-15);
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+/* ---------- Pushed screens with a back button (Edit Opening, Plan Settings, Seasons) ---------- */
+.pushed {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  padding: calc(env(safe-area-inset-top) + 14px) var(--gutter) calc(env(safe-area-inset-bottom) + 16px);
+}
+.pushed__header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-bottom: 10px;
+}
+.pushed__back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tap);
+  height: var(--tap);
+  flex-shrink: 0;
+  color: var(--text-ink);
+}
+.pushed__title {
+  font-size: 1.625rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+.pushed__subtitle {
+  padding-top: 2px;
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+}
+.pushed__spacer {
+  flex: 1;
+  min-height: 24px;
+}
+.pushed__actions {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 8px;
+  padding-bottom: 4px;
+  background: var(--surface-white);
+}

@@ -1,0 +1,101 @@
+/* ---------- Add / Edit task (Figma 16:800, 16:1939) ---------- */
+.info-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 10px;
+  padding: 13px 15px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--surface-card);
+}
+.info-card__title {
+  font-size: var(--fs-body-14);
+  font-weight: 600;
+  color: var(--text-ink);
+}
+.info-card__body {
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+}
+
+.show-up {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+  padding: 13px 15px;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--surface-card);
+}
+.show-up__title {
+  font-size: var(--fs-small);
+  font-weight: 600;
+  color: var(--text-subhead);
+}
+.show-up__text {
+  font-size: var(--fs-caption);
+  line-height: 1.45;
+  color: var(--text-ink);
+}
+
+.runway {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  padding-top: 6px;
+}
+.runway__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 30px;
+  font-size: var(--fs-small);
+}
+.runway__row dt {
+  font-weight: 600;
+  color: var(--text-subhead);
+}
+.runway__row dd {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+/* Status tags (shared with Today later): clay outline, always with a dot and a word */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border: 1px solid var(--clay-solid-dark);
+  border-radius: 999px;
+  background: var(--clay-bg);
+  font-size: var(--fs-small);
+  font-weight: 600;
+  color: var(--clay-text);
+  white-space: nowrap;
+}
+.tag__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--clay-solid);
+}
+.tag--priority {
+  border-color: var(--status-priority);
+  background: var(--status-priority);
+  color: var(--surface-white);
+  font-weight: 700;
+}
+.tag--priority .tag__dot {
+  background: var(--surface-white);
+}
+
+.sheet .toggle-row {
+  margin-bottom: 10px;
+}
+.sheet .delete-text {
+  margin-top: 0;
+  margin-bottom: 6px;
+}

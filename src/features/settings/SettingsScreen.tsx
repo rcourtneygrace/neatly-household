@@ -1,18 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Icon } from '../../ui';
 import { ActionSheet } from '../../ui/ActionSheet';
 import { updateHousehold, useHousehold } from '../../data/hooks';
 import { exportBackup, importBackup, shareOrDownload } from '../../data/backup';
 import { loadSampleRecords } from '../../data/sampleRecords';
+import { loadSuggestedTasks } from '../../data/suggestedTasks';
 import type { BusinessHours } from '../../data/types';
 import '../records/records.css';
 import '../records/record-form.css';
 import './settings.css';
+import './plan-settings.css';
 
 /**
  * Settings, opened from the gear on each tab.
- * Plan Settings and Seasons (Figma) join this screen in Phase 3.
+ * Plan Settings and Seasons (Figma 16:2803, 16:2695) open from here.
  * Household name and hours have no Figma screen yet; they stand in until the setup flow exists.
  */
 export function SettingsScreen() {
@@ -64,6 +66,15 @@ export function SettingsScreen() {
       </section>
 
       <section className="settings__group">
+        <h2 className="settings__heading">Plan</h2>
+        <Link to="/settings/plan" className="link-field">
+          <span>Plan Settings</span>
+          <Icon name="chevron-right" size={18} />
+        </Link>
+        <p className="settings__hint">Week, month and year start, seasons, and clearing done items.</p>
+      </section>
+
+      <section className="settings__group">
         <h2 className="settings__heading">Business hours</h2>
         <p className="settings__hint">Opening shows in the morning. Closing appears an hour before close.</p>
         <div className="settings__hours">
@@ -112,7 +123,20 @@ export function SettingsScreen() {
 
       <section className="settings__group">
         <h2 className="settings__heading">Try it out</h2>
-        <p className="settings__hint">Adds example records (paint, filters, contacts) so you can see how Records works.</p>
+        <p className="settings__hint">
+          Suggested tasks give you a starter plan for each part of the house. Example records (paint, filters, contacts)
+          show how Records works. Nothing already on your phone is changed.
+        </p>
+        <button
+          type="button"
+          className="outline-button outline-button--wide"
+          onClick={async () => {
+            const n = await loadSuggestedTasks();
+            setStatus(n ? `Added ${n} suggested tasks.` : 'The suggested tasks are already on your plan.');
+          }}
+        >
+          Add suggested tasks
+        </button>
         <button
           type="button"
           className="outline-button outline-button--wide"
