@@ -1,0 +1,266 @@
+/* ---------- Records list (Figma 6:46) ---------- */
+.records-screen {
+  /* room for the fixed Add record button above the tab bar */
+  padding-bottom: calc(var(--nav-height) + 68px + 28px);
+}
+.records-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 12px;
+}
+.search-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 16px;
+  background: var(--surface-white);
+  border: 1.5px solid var(--border-field);
+  border-radius: var(--r-field);
+  color: var(--text-muted);
+}
+.search-field:focus-within {
+  border-color: var(--brand-teal);
+}
+.search-field input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: var(--fs-body-16);
+  color: var(--text-ink);
+  -webkit-appearance: none;
+  appearance: none;
+}
+.search-field input::placeholder {
+  color: var(--text-muted);
+}
+
+.records-list {
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.records-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+/* Sticky category band: stays pinned while its own records scroll under it */
+.records-group__header {
+  position: sticky;
+  top: env(safe-area-inset-top);
+  z-index: 5;
+  box-shadow: 0 -8px 0 var(--surface-white); /* hides rows sliding past the gap above the band */
+}
+.records-group__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.records-add {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: var(--nav-height);
+  z-index: 15;
+  padding: 8px var(--gutter) 14px;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), var(--surface-white) 12px);
+}
+.records-empty {
+  padding: 32px 8px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--fs-body-15);
+  line-height: 1.4;
+}
+.records-empty__title {
+  margin-bottom: 6px;
+  font-size: var(--fs-body-17);
+  font-weight: 600;
+  color: var(--text-ink);
+}
+
+/* ---------- Record detail (Figma 39:439) ---------- */
+.record-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: calc(env(safe-area-inset-top) + 16px) var(--gutter) calc(env(safe-area-inset-bottom) + 32px);
+}
+.detail-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.back-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tap);
+  height: var(--tap);
+  flex-shrink: 0;
+  border-radius: 22px;
+  background: var(--surface-tint-light);
+  color: var(--text-ink);
+}
+.detail-header__titles {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.detail-header__kicker {
+  font-size: var(--fs-kicker);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-kicker);
+}
+.detail-header__title {
+  font-size: var(--fs-title);
+  font-weight: 700;
+  color: var(--text-ink);
+  overflow-wrap: anywhere;
+}
+.outline-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--tap);
+  padding: 0 14px;
+  border: 1px solid var(--border-input);
+  border-radius: 10px;
+  background: var(--surface-white);
+  font-size: var(--fs-body-14);
+  font-weight: 600;
+  color: var(--text-ink);
+  text-decoration: none;
+}
+.outline-button--wide {
+  width: 100%;
+  min-height: 48px;
+}
+
+.photo-hero {
+  position: relative;
+  height: 230px;
+  border-radius: var(--r-card);
+  overflow: hidden;
+  background: var(--surface-tint);
+}
+.photo-hero img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.photo-hero__count {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  background: rgba(15, 23, 42, 0.7);
+  color: #fff;
+  font-size: var(--fs-small);
+  font-weight: 500;
+}
+.photo-thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.photo-thumb {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--surface-tint);
+  border: 2px solid transparent;
+}
+.photo-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.photo-thumb[aria-current='true'] {
+  border-color: var(--brand-teal);
+}
+.photo-add-tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border: 1px dashed var(--border-input);
+  border-radius: 12px;
+  color: var(--brand-teal);
+}
+
+.details-card {
+  margin: 0;
+  border-radius: var(--r-row);
+  background: var(--surface-card);
+  overflow: hidden;
+}
+.details-card__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  padding: 12px 16px;
+}
+.details-card__row + .details-card__row {
+  border-top: 1px solid var(--border-default);
+}
+.details-card__label {
+  font-size: var(--fs-body-14);
+  color: var(--text-muted);
+  flex-shrink: 0;
+  max-width: 45%;
+}
+.details-card__value {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: var(--fs-body-16);
+  font-weight: 600;
+  color: var(--text-ink);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.record-links {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.record-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.record-notes__label {
+  font-size: var(--fs-body-14);
+  font-weight: 600;
+  color: var(--text-subhead);
+}
+.record-notes__text {
+  font-size: var(--fs-body-15);
+  line-height: 1.35;
+  color: var(--text-ink);
+  white-space: pre-wrap;
+}

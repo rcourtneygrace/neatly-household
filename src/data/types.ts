@@ -1,0 +1,154 @@
+/**
+ * Data model from the functional spec. Every stored row carries sync fields
+ * (id, createdAt, updatedAt, deletedAt) so accounts and sync can be added later.
+ */
+
+export type ID = string;
+export type ISODate = string; // YYYY-MM-DD (local calendar date)
+export type ISODateTime = string; // full ISO timestamp
+
+export interface SyncFields {
+  id: ID;
+  createdAt: ISODateTime;
+  updatedAt: ISODateTime;
+  deletedAt?: ISODateTime | null;
+}
+
+export type SeasonName = 'spring' | 'summer' | 'fall' | 'winter';
+export type SeasonPreset = 'calendar' | 'weather' | 'custom';
+export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6; // 0 = Sunday
+
+export interface BusinessHours {
+  weekdayOpen: string; // "07:00"
+  weekdayClose: string; // "21:00"
+  weekendOpen: string;
+  weekendClose: string;
+}
+
+export interface Household extends SyncFields {
+  name: string;
+  mission: string;
+  timezone: string;
+  weekStart: Weekday;
+  monthStart: number; // day of month the month begins on (1 = the 1st)
+  yearStart: number; // month index the year begins on (0 = January)
+  seasonPreset: SeasonPreset;
+  /** Start date of each season as "MM-DD" */
+  seasonStartDates: Record<SeasonName, string>;
+  clearWhenChecked: boolean;
+  accent: string;
+  unlocked: boolean; // paid unlock, not used until public release
+  businessHours: BusinessHours;
+}
+
+export interface Department extends SyncFields {
+  name: string;
+  order: number;
+  enabled: boolean;
+}
+
+export interface RoutineTemplate extends SyncFields {
+  type: 'opening' | 'closing';
+  steps: { text: string; order: number }[];
+}
+
+export type Cadence = 'daily' | 'weekly' | 'monthly' | 'seasonal' | 'yearly';
+/** "specific" = a set day / season / month; "every" = any time in the period */
+export type TimingMode = 'specific' | 'every';
+
+/**
+ * timingValue meaning by cadence (timingMode "specific"):
+ *  weekly   → weekday numbers, e.g. [3] for Wednesday
+ *  monthly  → day of month: 1..28, or -1 for the last day
+ *  seasonal → season names, e.g. ["fall"]
+ *  yearly   → month index 0..11
+ */
+export type TimingValue = number[] | SeasonName[] | number | null;
+
+export interface Task extends SyncFields {
+  name: string;
+  departmentId: ID;
+  cadence: Cadence;
+  timingMode: TimingMode;
+  timingValue: TimingValue;
+  steps: string[];
+  notes: string;
+  recordId?: ID | null;
+  paused: boolean;
+  archived: boolean;
+}
+
+export type OccurrenceStatus = 'open' | 'done' | 'deferred' | 'carriedOver';
+
+export interface Occurrence extends SyncFields {
+  taskId: ID;
+  periodStart: ISODate;
+  periodEnd: ISODate;
+  /** The day it is due, when the task has a specific day */
+  dueDate?: ISODate | null;
+  /** Set by Build Your Day or "Give it a day" */
+  plannedFor?: ISODate | null;
+  status: OccurrenceStatus;
+  completedAt?: ISODateTime | null;
+  deferReason?: string | null;
+}
+
+export interface DayLog extends SyncFields {
+  date: ISODate;
+  openingStatus: 'open' | 'done';
+  openingAt?: ISODateTime | null;
+  closingStatus: 'open' | 'done';
+  closingAt?: ISODateTime | null;
+  tasksPlanned: number;
+  tasksCompleted: number;
+}
+
+export interface VacationPeriod extends SyncFields {
+  startDate: ISODate;
+  endDate: ISODate;
+}
+
+export interface DetailRow {
+  label: string;
+  value: string;
+}
+
+export interface RecordLink {
+  label: string;
+  url: string;
+}
+
+export interface RecordEntry extends SyncFields {
+  title: string;
+  category: RecordCategory;
+  details: DetailRow[];
+  photos: ID[]; // ids in the photos table
+  links: RecordLink[];
+  notes: string;
+}
+
+export interface Photo extends SyncFields {
+  recordId: ID;
+  blob: Blob; // resized to ~1600px long edge
+  thumb: Blob; // small square-ish thumbnail for list rows
+  width: number;
+  height: number;
+}
+
+export const RECORD_CATEGORIES = [
+  'Paint & Finishes',
+  'Products & Supplies',
+  'Home Sizes & Measurements',
+  'Family Sizes',
+  'Appliances & Warranties',
+  'Home Contacts',
+  'Doctors & Health',
+  'Pets',
+  'Vehicles',
+  'Services & Providers',
+  'Garden & Plants',
+  'Schools & Childcare',
+  'Custom',
+] as const;
+
+export type RecordCategory = (typeof RECORD_CATEGORIES)[number];

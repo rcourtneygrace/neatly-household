@@ -1,0 +1,74 @@
+/*
+ * Design tokens from Figma "Neatly Household" → Design page, collection "Neatly Colors", mode "New palette".
+ * CSS names mirror the Figma variable names (brand/teal → --brand-teal).
+ * Sizes are in rem (1rem = 16px at default text size) so the app follows the system text size.
+ */
+
+:root {
+  /* Brand */
+  --brand-teal: #0d7569;
+  --brand-wordmark-dark: #0f172a;
+  --brand-wordmark-light: #64748b;
+
+  /* Surfaces */
+  --surface-white: #ffffff;
+  --surface-card: #f2f6f6;
+  --surface-row: #f4f6f7;
+  --surface-tint: #dce7e8;
+  --surface-tint-light: #eef4f5;
+  --surface-tint-strong: #d3e2e4;
+
+  /* Text */
+  --text-ink: #0f172a;
+  --text-muted: #5b697d;
+  --text-subhead: #334155;
+  --text-kicker: #0d7569;
+  --text-faint: #8a9199;
+
+  /* Borders */
+  --border-default: #e1e8ea;
+  --border-input: #c3d0d3;
+  --border-field: #d4dee0;
+
+  /* Clay (alerts: Ready for a reset, Priority, Delete). Never red. */
+  --clay-text: #9c3d1f;
+  --clay-bg: #fdebe3;
+  --clay-bg-light: #fef3ee;
+  --clay-border: #f3c9b8;
+  --clay-border-soft: #ead3c6;
+  --clay-solid: #c4623f;
+  --clay-solid-dark: #b4502f;
+  --clay-deep: #5a2312;
+  --status-priority: #9c3d1f;
+
+  /* Teal data shades (rings, heat map, bars) */
+  --teal-600: #4f9b92;
+  --teal-500: #5fa59c;
+  --teal-200: #b7dad5;
+
+  /* Type: Figma text styles. The spec sets a 12px minimum, so Micro/11 and Kicker/10 render at 12px. */
+  --font: 'Figtree Variable', 'Figtree', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --fs-display: 2.5rem;   /* Display/40 */
+  --fs-title: 1.375rem;   /* Title/22 */
+  --fs-button: 1.25rem;   /* Button/20 */
+  --fs-body-17: 1.0625rem;/* Body/17 */
+  --fs-body-16: 1rem;     /* Body/16 */
+  --fs-body-15: 0.9375rem;/* Body/15, Label/15 */
+  --fs-body-14: 0.875rem; /* Body/14, Label/14 */
+  --fs-caption: 0.8125rem;/* Caption/13 */
+  --fs-small: 0.75rem;    /* Small/12 */
+  --fs-micro: 0.75rem;    /* Micro/11 → 12 */
+  --fs-kicker: 0.75rem;   /* Kicker/10 → 12 */
+
+  /* Radii */
+  --r-field: 12px;
+  --r-row: 14px;
+  --r-band: 10px;
+  --r-button: 16px;
+  --r-card: 16px;
+
+  /* Layout */
+  --gutter: 16px;
+  --tap: 44px;
+  --nav-height: calc(54px + env(safe-area-inset-bottom));
+}

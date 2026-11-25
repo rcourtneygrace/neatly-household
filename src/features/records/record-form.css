@@ -1,0 +1,309 @@
+/* ---------- Add / Edit record sheet (Figma 7:284, 7:357) ---------- */
+.sheet-screen {
+  min-height: 100dvh;
+  background: var(--text-ink);
+  padding-top: calc(env(safe-area-inset-top) + 12px);
+}
+.sheet {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100dvh - env(safe-area-inset-top) - 12px);
+  padding: 10px var(--gutter) calc(env(safe-area-inset-bottom) + 16px);
+  background: var(--surface-white);
+  border-radius: 20px 20px 0 0;
+}
+.sheet__handle {
+  align-self: center;
+  width: 40px;
+  height: 4px;
+  margin-bottom: 6px;
+  border-radius: 2px;
+  background: var(--border-input);
+}
+.sheet__title {
+  padding-bottom: 8px;
+  font-size: var(--fs-title);
+  font-weight: 700;
+}
+.sheet__spacer {
+  flex: 1;
+  min-height: 16px;
+}
+.sheet__actions {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 8px;
+  background: var(--surface-white);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 10px;
+}
+.field--gap {
+  padding-bottom: 14px;
+}
+.field__label {
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+}
+.text-input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--border-input);
+  border-radius: 10px;
+  background: var(--surface-white);
+  font-size: var(--fs-body-15);
+  color: var(--text-ink);
+}
+.text-input:focus,
+.detail-input-row input:focus,
+.select-wrap select:focus {
+  outline: none;
+  border: 1.5px solid var(--brand-teal);
+}
+.text-input::placeholder,
+.detail-input-row input::placeholder {
+  color: var(--text-muted);
+}
+.textarea {
+  min-height: 80px;
+  padding: 12px 14px;
+  line-height: 1.35;
+  resize: vertical;
+}
+.select-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.select-wrap select {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 40px 0 14px;
+  border: 1px solid var(--border-input);
+  border-radius: 10px;
+  background: var(--surface-white);
+  font-size: var(--fs-body-15);
+  color: var(--text-ink);
+  -webkit-appearance: none;
+  appearance: none;
+}
+.select-wrap .icon {
+  position: absolute;
+  right: 14px;
+  pointer-events: none;
+  color: var(--text-muted);
+}
+
+.details-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 4px;
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+}
+.detail-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.detail-input-row {
+  gap: 6px;
+}
+.detail-input-row__label.is-new {
+  width: 112px;
+  background: var(--surface-white);
+  border: 1.5px solid var(--brand-teal);
+}
+.phone-hint {
+  padding: 6px 0 0 2px;
+  font-size: var(--fs-micro);
+  color: var(--text-kicker);
+}
+
+.chips-block {
+  padding-top: 2px;
+}
+.chips-hint {
+  padding: 2px 0 6px;
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-bottom: 6px;
+}
+.chip {
+  min-height: var(--tap);
+  padding: 0 14px;
+  border: 1px solid var(--border-input);
+  border-radius: 999px;
+  background: var(--surface-white);
+  font-size: var(--fs-caption);
+  color: var(--text-ink);
+}
+
+.text-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  min-height: var(--tap);
+  padding: 0 4px;
+  font-size: var(--fs-body-14);
+  font-weight: 600;
+  color: var(--brand-teal);
+}
+
+.link-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 10px;
+}
+.link-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.link-row__url {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.link-photo {
+  display: flex;
+  gap: 8px;
+  padding-bottom: 10px;
+}
+.soft-button {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--tap);
+  border: 1px solid var(--border-input);
+  border-radius: 10px;
+  background: var(--surface-white);
+  font-size: var(--fs-caption);
+  color: var(--text-ink);
+}
+.soft-button:disabled {
+  opacity: 0.5;
+}
+
+.form-photos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-bottom: 10px;
+}
+.form-thumb {
+  position: relative;
+  width: 64px;
+  height: 64px;
+}
+.form-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+  display: block;
+}
+.form-thumb__remove {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
+  background: var(--text-ink);
+  color: #fff;
+  border: 2px solid var(--surface-white);
+}
+/* enlarge the touch area to 44px without changing the look */
+.form-thumb__remove::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+}
+
+.preview-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--surface-card);
+  font-size: var(--fs-small);
+  line-height: 1.4;
+  color: var(--text-subhead);
+}
+.preview-box__title {
+  color: var(--text-ink);
+}
+
+.form-error {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--clay-bg);
+  border: 1px solid var(--clay-border);
+  color: var(--clay-text);
+  font-size: var(--fs-body-14);
+}
+.delete-text {
+  align-self: center;
+  min-height: var(--tap);
+  margin-top: 16px;
+  padding: 0 16px;
+  font-size: var(--fs-body-14);
+  font-weight: 600;
+  color: var(--clay-text);
+}
+.cancel-button {
+  min-height: 48px;
+  padding: 0 18px;
+  font-size: var(--fs-body-14);
+  color: var(--text-muted);
+}
+.save-button {
+  flex: 1;
+  min-height: 52px;
+  border-radius: 12px;
+  background: var(--brand-teal);
+  color: var(--surface-white);
+  font-size: var(--fs-body-15);
+  font-weight: 500;
+}
+.save-button:disabled {
+  opacity: 0.6;
+}
+.photo-status {
+  position: fixed;
+  left: var(--gutter);
+  right: var(--gutter);
+  bottom: calc(env(safe-area-inset-bottom) + 90px);
+  z-index: 50;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--text-ink);
+  color: #fff;
+  font-size: var(--fs-body-14);
+  text-align: center;
+}

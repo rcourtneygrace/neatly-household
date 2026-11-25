@@ -1,0 +1,167 @@
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Icon } from '../../ui';
+import { ActionSheet } from '../../ui/ActionSheet';
+import { updateHousehold, useHousehold } from '../../data/hooks';
+import { exportBackup, importBackup, shareOrDownload } from '../../data/backup';
+import { loadSampleRecords } from '../../data/sampleRecords';
+import type { BusinessHours } from '../../data/types';
+import '../records/records.css';
+import '../records/record-form.css';
+import './settings.css';
+
+/**
+ * Settings, opened from the gear on each tab.
+ * Plan Settings and Seasons (Figma) join this screen in Phase 3.
+ * Household name and hours have no Figma screen yet; they stand in until the setup flow exists.
+ */
+export function SettingsScreen() {
+  const navigate = useNavigate();
+  const household = useHousehold();
+  const [name, setName] = useState('');
+  const [hours, setHours] = useState<BusinessHours | null>(null);
+  const [status, setStatus] = useState<string>();
+  const [pendingImport, setPendingImport] = useState<File | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (household) {
+      setName(household.name);
+      setHours(household.businessHours);
+    }
+  }, [household?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!household || !hours) return null;
+
+  const saveName = () => {
+    const n = name.trim();
+    if (n && n !== household.name) updateHousehold({ name: n });
+    else setName(household.name);
+  };
+  const setHour = (key: keyof BusinessHours, value: string) => {
+    const next = { ...hours, [key]: value };
+    setHours(next);
+    if (value) updateHousehold({ businessHours: next });
+  };
+
+  return (
+    <main className="settings">
+      <header className="detail-header">
+        <button type="button" className="back-button" onClick={() => navigate(-1)}>
+          <Icon name="chevron-left" size={22} label="Back" />
+        </button>
+        <div className="detail-header__titles">
+          <h1 className="detail-header__title">Settings</h1>
+        </div>
+      </header>
+
+      <section className="settings__group">
+        <h2 className="settings__heading">Household</h2>
+        <label className="field">
+          <span className="field__label">Household name</span>
+          <input className="text-input" value={name} onChange={(e) => setName(e.target.value)} onBlur={saveName} />
+        </label>
+      </section>
+
+      <section className="settings__group">
+        <h2 className="settings__heading">Business hours</h2>
+        <p className="settings__hint">Opening shows in the morning. Closing appears an hour before close.</p>
+        <div className="settings__hours">
+          <HourField label="Weekdays open" value={hours.weekdayOpen} onChange={(v) => setHour('weekdayOpen', v)} />
+          <HourField label="Weekdays close" value={hours.weekdayClose} onChange={(v) => setHour('weekdayClose', v)} />
+          <HourField label="Weekends open" value={hours.weekendOpen} onChange={(v) => setHour('weekendOpen', v)} />
+          <HourField label="Weekends close" value={hours.weekendClose} onChange={(v) => setHour('weekendClose', v)} />
+        </div>
+      </section>
+
+      <section className="settings__group">
+        <h2 className="settings__heading">Backup</h2>
+        <p className="settings__hint">
+          Everything lives only on this phone. Save a backup file now and then, for example to Files or iCloud Drive.
+        </p>
+        <button
+          type="button"
+          className="outline-button outline-button--wide"
+          onClick={async () => {
+            setStatus('Preparing backup…');
+            try {
+              await shareOrDownload(await exportBackup());
+              setStatus(undefined);
+            } catch {
+              setStatus('The backup could not be made. Please try again.');
+            }
+          }}
+        >
+          Save a backup
+        </button>
+        <button type="button" className="outline-button outline-button--wide" onClick={() => fileRef.current?.click()}>
+          Restore from a backup
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="application/json,.json"
+          hidden
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) setPendingImport(f);
+            e.target.value = '';
+          }}
+        />
+      </section>
+
+      <section className="settings__group">
+        <h2 className="settings__heading">Try it out</h2>
+        <p className="settings__hint">Adds example records (paint, filters, contacts) so you can see how Records works.</p>
+        <button
+          type="button"
+          className="outline-button outline-button--wide"
+          onClick={async () => {
+            const n = await loadSampleRecords();
+            setStatus(n ? `Added ${n} example records.` : 'The example records are already here.');
+          }}
+        >
+          Add example records
+        </button>
+      </section>
+
+      {status && (
+        <p className="settings__status" role="status">
+          {status}
+        </p>
+      )}
+
+      <ActionSheet
+        open={!!pendingImport}
+        title="Restore this backup?"
+        message="Everything on this phone will be replaced with what is in the backup file."
+        onClose={() => setPendingImport(null)}
+        actions={[
+          {
+            label: 'Replace and restore',
+            tone: 'clay',
+            onSelect: async () => {
+              const f = pendingImport!;
+              setPendingImport(null);
+              try {
+                await importBackup(f);
+                setStatus('Backup restored.');
+              } catch (err) {
+                setStatus((err as Error).message);
+              }
+            },
+          },
+        ]}
+      />
+    </main>
+  );
+}
+
+function HourField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <label className="field">
+      <span className="field__label">{label}</span>
+      <input className="text-input" type="time" value={value} onChange={(e) => onChange(e.target.value)} />
+    </label>
+  );
+}
