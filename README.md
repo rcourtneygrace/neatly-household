@@ -35,8 +35,9 @@ All data stays on the phone (IndexedDB). Every row has `id/createdAt/updatedAt/d
 2. Records ✅
 3. Plan ✅: tasks, Opening/Closing, Plan Settings, Seasons, "Suggested tasks"
 4. Today ✅: Opening/Closing, Daily, In Progress, Coming Soon, tags, check-off, Defer, Build Your Day, after hours
-5. Analysis ✅ (review with owner): home health, department detail, adjust monthly tasks, give it a day, change how often
-6. Setup flow, vacation mode: **waiting on product spec v1**
+5. Analysis ✅: home health, department detail, adjust monthly tasks, give it a day, change how often
+6. Build Your Day + Vacation mode + task actions ✅ (review with owner), from the doc "Neatly Household: Build Your Day and Vacation Mode"
+7. Setup flow: **waiting on product spec v1**
 
 ## Decisions and open items
 
@@ -51,7 +52,14 @@ All data stays on the phone (IndexedDB). Every row has `id/createdAt/updatedAt/d
   Priority once the day has passed. "Every week/month/…" tasks show all period, untagged. Anything left undone is carried
   over as Priority. Deferred tasks are set aside with a reason and not carried over. Daily tasks roll over as Priority
   only after a day the household was opened. Closing appears 60 minutes before the close time.
-- Tap a task's name on Today for: Do it today, Defer, Edit task.
+- Today shows only today's list: tasks fixed for today (a set day that is today, or pushed there), Build Your Day
+  picks (unfinished picks carry over as "Carried over") and daily tasks. Everything else is offered in Build Your Day:
+  weekly set days up to 2 days ahead, monthly up to 4, plus "every …" tasks and Priority (missed) ones, max 5 rows a step.
+- Tap a task row (not its circle) for: Push to a later date, Skip this <cycle> (with an optional reason), Edit task.
+  Skips are stored as Occurrence.status "deferred"; only "Not needed this time", "No time" and "Other" can lead to a
+  "change how often" suggestion.
+- Vacation mode (Settings, first card): Today shows "Out of office"; anything whose window ends during the trip is
+  not carried over and is left out of Analysis. "Welcome back" shows once after.
 - Analysis (domain/analysis.ts): ring score = share of the chosen Month/Season/Year's finished windows that found their
   time (on time 1, late ½, missed 0; set-aside left out; daily tasks only on opened days). 85+ Flowing, 65–84 Steady,
   under 65 Ready for a reset. Suggestions need a clear pattern: 3 set-asides in a row, or late/missed 3 of the last 4.

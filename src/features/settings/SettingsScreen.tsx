@@ -3,6 +3,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Icon } from '../../ui';
 import { ActionSheet } from '../../ui/ActionSheet';
 import { updateHousehold, useHousehold } from '../../data/hooks';
+import { endVacation, startVacation } from '../../data/today';
+import { Toggle } from '../../ui/controls';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../../data/db';
+import { toDay } from '../../domain/dates';
 import { exportBackup, importBackup, shareOrDownload } from '../../data/backup';
 import { loadSampleRecords } from '../../data/sampleRecords';
 import { loadSuggestedTasks } from '../../data/suggestedTasks';
@@ -25,6 +30,8 @@ export function SettingsScreen() {
   const [status, setStatus] = useState<string>();
   const [pendingImport, setPendingImport] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  // Vacation mode is on whenever a vacation period has no end date
+  const onVacation = useLiveQuery(async () => (await db.vacations.toArray()).some((v) => !v.deletedAt && v.endDate === null)) ?? false;
 
   useEffect(() => {
     if (household) {
@@ -57,6 +64,23 @@ export function SettingsScreen() {
         </div>
       </header>
 
+      <section className="settings__group plan-settings__toggle" aria-label="Vacation mode">
+        <Toggle
+          title="Vacation mode"
+          hint="Nothing will count against you while you're away."
+          checked={onVacation}
+          onChange={(on) => (on ? startVacation(toDay(new Date())) : endVacation(toDay(new Date())))}
+        />
+      </section>
+
+      <section className="settings__group">
+        <Link to="/settings/plan" className="link-field">
+          <span>Plan settings</span>
+          <Icon name="chevron-right" size={18} />
+        </Link>
+        <p className="settings__hint">Week, month and year start, seasons, and clearing done items.</p>
+      </section>
+
       <section className="settings__group">
         <h2 className="settings__heading">Household</h2>
         <label className="field">
@@ -65,14 +89,6 @@ export function SettingsScreen() {
         </label>
       </section>
 
-      <section className="settings__group">
-        <h2 className="settings__heading">Plan</h2>
-        <Link to="/settings/plan" className="link-field">
-          <span>Plan Settings</span>
-          <Icon name="chevron-right" size={18} />
-        </Link>
-        <p className="settings__hint">Week, month and year start, seasons, and clearing done items.</p>
-      </section>
 
       <section className="settings__group">
         <h2 className="settings__heading">Business hours</h2>

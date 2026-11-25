@@ -118,10 +118,26 @@ describe('department stats and home health', () => {
 describe('suggestions', () => {
   it('three set-asides in a row suggest a less frequent rhythm (Figma: Mop the floors)', () => {
     const t = task({ name: 'Mop the floors' });
-    const occs = ['2026-09-20', '2026-09-27', '2026-10-04'].map((w) => occ(t, w, { status: 'deferred' }));
+    const occs = ['2026-09-20', '2026-09-27', '2026-10-04'].map((w) => occ(t, w, { status: 'deferred', deferReason: 'No time' }));
     const [s] = taskStats(input([t], occs), '2026-09-01', '2026-10-31');
     expect(suggestionFor(s)).toMatchObject({ kind: 'setAside', to: 'monthly', count: 3 });
     expect(slipOf(s)).toBe('setAside');
+  });
+
+  it('skips for life reasons, or with no reason, never suggest a change', () => {
+    const t = task({});
+    for (const reason of ["I'm sick", 'Bad weather', 'Something came up', null]) {
+      const occs = ['2026-09-20', '2026-09-27', '2026-10-04'].map((w) => occ(t, w, { status: 'deferred', deferReason: reason }));
+      const [s] = taskStats(input([t], occs), '2026-09-01', '2026-10-31');
+      expect(suggestionFor(s)).toBeNull();
+    }
+  });
+
+  it('vacation days are left out of every number', () => {
+    const t = task({ activeSince: '2026-09-06' });
+    const away = [{ startDate: '2026-09-06', endDate: '2026-10-10' }];
+    const [s] = taskStats({ ...input([t], []), vacations: away }, '2026-09-01', '2026-10-31');
+    expect(s.tally).toEqual({ onTime: 0, late: 0, missed: 0, deferred: 0 });
   });
 
   it('no suggestion without a clear pattern', () => {

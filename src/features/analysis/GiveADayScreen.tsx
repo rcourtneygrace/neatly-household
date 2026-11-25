@@ -7,14 +7,18 @@ import { giveItADay, useAnalysisData, type AnalysisData } from '../../data/analy
 import type { Task } from '../../data/types';
 import { addDays, fromDay, makeDay, shortDate, toDay, type Day } from '../../domain/dates';
 import { countWord, rhythm, nextWeekday, resetDays, taskStats } from '../../domain/analysis';
-import { cadenceShort } from '../../domain/schedule';
+import { buildToday, cadenceShort, type TodayItem } from '../../domain/schedule';
+import { pushTo } from '../../data/today';
 import { CADENCE_LABEL, MONTHS, WEEKDAYS } from '../../domain/tasks';
 import '../records/record-form.css';
 import '../today/today.css';
 import './analysis.css';
 
-/** Give it a day (Figma 16:2599): plan one catch-up day. The usual schedule stays the same. */
-export function GiveADayScreen() {
+/**
+ * Give it a day (Figma 16:2599): plan one catch-up day. The usual schedule stays the same.
+ * mode "push" is "Push to a later date" from the task actions sheet on Today (Build Your Day doc).
+ */
+export function GiveADayScreen({ mode = 'give' }: { mode?: 'give' | 'push' }) {
   const now = useNow();
   const T = toDay(now);
   const data = useAnalysisData(T);
@@ -22,7 +26,32 @@ export function GiveADayScreen() {
   if (!data) return null;
   const task = data.tasks.find((t) => t.id === taskId);
   if (!task) return <Navigate to="/analysis" replace />;
-  return <GiveADay data={data} task={task} T={T} />;
+  return <GiveADay data={data} task={task} T={T} mode={mode} />;
+}
+
+function viewOn(data: AnalysisData, day: Day, tasks = data.tasks) {
+  return buildToday({
+    today: day,
+    tasks,
+    occurrences: data.occurrences,
+    cal: data.cal,
+    clearWhenChecked: false,
+    openedDays: new Set(data.dayLogs.filter((l) => l.openingStatus === 'done').map((l) => l.date)),
+    vacations: data.vacations,
+  });
+}
+
+/** The next two days with the fewest tasks fixed on them. */
+function lightestDays(data: AnalysisData, T: Day): Day[] {
+  const days = Array.from({ length: 14 }, (_, i) => addDays(T, i + 1)).map((day) => ({
+    day,
+    load: viewOn(data, day).inProgress.filter((i) => i.kind === 'locked').length,
+  }));
+  return days
+    .sort((a, b) => a.load - b.load || a.day.localeCompare(b.day))
+    .slice(0, 2)
+    .map((d) => d.day)
+    .sort();
 }
 
 function longDay(day: Day) {
@@ -30,15 +59,25 @@ function longDay(day: Day) {
   return `${WEEKDAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}`;
 }
 
-function GiveADay({ data, task, T }: { data: AnalysisData; task: Task; T: Day }) {
+function GiveADay({ data, task, T, mode }: { data: AnalysisData; task: Task; T: Day; mode: 'give' | 'push' }) {
   const navigate = useNavigate();
+  const push = mode === 'push';
   const dept = data.departments.find((d) => d.id === task.departmentId)?.name ?? '';
   const year = useMemo(() => ({ from: addDays(T, -365), to: T }), [T]);
   const days = resetDays(rhythm(data, year.from, year.to));
-  const suggested = [
-    { day: nextWeekday(addDays(T, 1), days.busiest), why: 'Your big reset day' },
-    { day: nextWeekday(addDays(T, 1), days.lightest), why: 'Your lightest day' },
-  ].sort((a, b) => a.day.localeCompare(b.day));
+  const [suggested] = useState(() =>
+    push
+      ? lightestDays(data, T).map((day) => ({ day, why: 'A light day' }))
+      : [
+          { day: nextWeekday(addDays(T, 1), days.busiest), why: 'Your big reset day' },
+          { day: nextWeekday(addDays(T, 1), days.lightest), why: 'Your lightest day' },
+        ].sort((a, b) => a.day.localeCompare(b.day)),
+  );
+  // The row as it is on Today right now (push moves this instance)
+  const [item] = useState<TodayItem | undefined>(() => {
+    const v = viewOn(data, T, [task]);
+    return [...v.daily, ...v.inProgress, ...v.offers][0];
+  });
   const [picked, setPicked] = useState<Day>(suggested[0].day);
   const t0 = fromDay(T);
   const [month, setMonth] = useState({ y: t0.getFullYear(), m: t0.getMonth() });
@@ -56,19 +95,23 @@ function GiveADay({ data, task, T }: { data: AnalysisData; task: Task; T: Day })
   const weekStartDate = t0.getDate() - t0.getDay();
 
   const onAdd = async () => {
-    await giveItADay(task, picked, data.cal);
-    goBack(navigate, '/today');
+    if (push && item) await pushTo(item, picked);
+    else await giveItADay(task, picked, data.cal);
+    goBack(navigate, push ? '/today' : '/analysis');
   };
+  const pickedLabel = `${WEEKDAYS[fromDay(picked).getDay()]}, ${shortDate(picked)}`;
 
   return (
     <div className="sheet-screen">
       <div className="sheet">
         <div className="sheet__handle" aria-hidden />
-        <p className="kicker">Give it a day</p>
+        <p className="kicker">{push ? 'Push to a later date' : 'Give it a day'}</p>
         <h1 className="give__title">{task.name}</h1>
         <p className="give__intro">
           {dept} · {CADENCE_LABEL[task.cadence]}.
-          {setAside > 0 ? ` It has been set aside ${countWord(setAside)}.` : ''} Choose a day to catch up, just this once.
+          {push
+            ? ' Choose a day to move it to, just this once.'
+            : `${setAside > 0 ? ` It has been set aside ${countWord(setAside)}.` : ''} Choose a day to catch up, just this once.`}
         </p>
 
         <h2 className="give__label">Suggested days</h2>
@@ -116,7 +159,7 @@ function GiveADay({ data, task, T }: { data: AnalysisData; task: Task; T: Day })
             const day = makeDay(month.y, month.m, i + 1);
             // This month starts at the current week, as in Figma
             if (atThisMonth && i + 1 < weekStartDate) return null;
-            const past = day < T;
+            const past = push ? day <= T : day < T;
             return (
               <button
                 key={day}
@@ -137,8 +180,9 @@ function GiveADay({ data, task, T }: { data: AnalysisData; task: Task; T: Day })
         <div className="give-preview">
           <p className="kicker">How this will show up</p>
           <p className="give-preview__text">
-            {picked === T ? 'Today' : `On ${weekday}`}, it shows at the top of In Progress with a Today tag. After that, it goes
-            back to its usual {CADENCE_LABEL[task.cadence].toLowerCase()} schedule.
+            {picked === T ? 'Today' : `On ${weekday}`}, it is fixed on your list, at the top of In Progress with a Today tag.
+            {push ? ' Until then it stays off Today and is not carried over.' : ''} After that, it goes back to its usual{' '}
+            {CADENCE_LABEL[task.cadence].toLowerCase()} schedule.
           </p>
           <div className="give-preview__row">
             <span className="check" aria-hidden />
@@ -158,9 +202,9 @@ function GiveADay({ data, task, T }: { data: AnalysisData; task: Task; T: Day })
 
         <div className="sheet__spacer" />
         <button type="button" className="save-button" onClick={onAdd}>
-          Add to {picked === T ? 'today' : `${WEEKDAYS[fromDay(picked).getDay()]}, ${shortDate(picked)}`}
+          {push ? `Move to ${pickedLabel}` : `Add to ${picked === T ? 'today' : pickedLabel}`}
         </button>
-        <button type="button" className="byd__skip" onClick={() => goBack(navigate, '/analysis')}>
+        <button type="button" className="byd__skip" onClick={() => goBack(navigate, push ? '/today' : '/analysis')}>
           Not now
         </button>
         <p className="an-caption">Your usual schedule stays the same.</p>

@@ -16,11 +16,12 @@ export function useAnalysisData(today: Day): AnalysisData | undefined {
     const household = await db.household.toCollection().first();
     if (!household) return undefined;
     const from = addDays(today, -400);
-    const [tasks, departments, occurrences, dayLogs] = await Promise.all([
+    const [tasks, departments, occurrences, dayLogs, vacations] = await Promise.all([
       db.tasks.toArray(),
       db.departments.orderBy('order').toArray(),
       db.occurrences.where('periodStart').aboveOrEqual(from).toArray(),
       db.dayLogs.where('date').aboveOrEqual(from).toArray(),
+      db.vacations.toArray(),
     ]);
     return {
       today,
@@ -30,6 +31,7 @@ export function useAnalysisData(today: Day): AnalysisData | undefined {
       departments,
       occurrences: occurrences.filter((o) => !o.deletedAt),
       dayLogs,
+      vacations: vacations.filter((v) => !v.deletedAt),
     };
   }, [today]);
 }
@@ -53,7 +55,7 @@ export async function giveItADay(task: Task, day: Day, cal: PlanCalendar): Promi
   const inst = await instanceOn(task, day, cal);
   await db.transaction('rw', db.occurrences, async () => {
     const existing = await db.occurrences.where('[taskId+periodStart]').equals([task.id, inst.key]).first();
-    const changes = { plannedFor: day, ...(existing?.status === 'deferred' ? { status: 'open' as const, deferReason: null } : {}) };
+    const changes = { plannedFor: day, pinned: true, ...(existing?.status === 'deferred' ? { status: 'open' as const, deferReason: null } : {}) };
     if (existing) await db.occurrences.update(existing.id, { ...changes, updatedAt: nowISO() });
     else
       await db.occurrences.add(

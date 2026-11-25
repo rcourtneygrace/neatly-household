@@ -1,6 +1,6 @@
 import type { Cadence, DayLog, Department, Occurrence, Task } from '../data/types';
 import { addDays, fromDay, toDay, weekdayOf, type Day } from './dates';
-import { instancesAround, occKey, periodFor, type Instance, type PlanCalendar } from './schedule';
+import { inVacation, instancesAround, occKey, periodFor, type Instance, type PlanCalendar, type VacationSpan } from './schedule';
 import { CADENCE_LABEL, WEEKDAYS } from './tasks';
 
 /**
@@ -29,6 +29,8 @@ export interface AnalysisInput {
   occurrences: Occurrence[];
   dayLogs: DayLog[];
   cal: PlanCalendar;
+  /** Vacation days are left out of every number */
+  vacations?: VacationSpan[];
 }
 
 export interface Judged {
@@ -63,8 +65,10 @@ export function judge(
   occ: Occurrence | undefined,
   today: Day,
   openedDays: Set<Day>,
+  vacations?: VacationSpan[],
 ): Outcome {
   if (inst.end < since(task)) return 'skip';
+  if (occ?.status !== 'done' && inVacation(inst.end, vacations, today)) return 'skip';
   if (occ?.status === 'deferred') return 'deferred';
   if (occ?.status === 'done') {
     const on = occ.completedAt ? toDay(new Date(occ.completedAt)) : inst.end;
@@ -129,7 +133,7 @@ export function taskStats(input: AnalysisInput, from: Day, to: Day): TaskStats[]
     .map((task) => {
       const judged = instancesBetween(task, from, to, input.cal).map((inst) => {
         const o = occ.get(occKey(task.id, inst.key));
-        return { inst, occ: o, outcome: judge(task, inst, o, input.today, opened) };
+        return { inst, occ: o, outcome: judge(task, inst, o, input.today, opened, input.vacations) };
       });
       const tally = emptyTally();
       const deferReasons: string[] = [];
@@ -212,13 +216,26 @@ export interface Suggestion {
   count: number;
 }
 
-/** A pattern is "clear" when the last 3 judged windows were set aside, or 3 of the last 4 ran late or were missed. */
+/**
+ * Skip reasons that can suggest a change of rhythm. Life getting in the way ("I'm sick", "Bad
+ * weather", "Something came up") never does, and neither does a skip with no reason.
+ */
+export function reasonSuggests(reason: string | null | undefined): boolean {
+  if (!reason) return false;
+  return reason === 'Not needed this time' || reason === 'No time' || reason.startsWith('Other');
+}
+
+export function isWeather(reason: string | null | undefined): boolean {
+  return reason === 'Bad weather' || reason === 'Weather';
+}
+
+/** A pattern is "clear" when the last 3 judged windows were skipped for a reason that suggests it, or 3 of the last 4 ran late or were missed. */
 export function suggestionFor(s: TaskStats): Suggestion | null {
   const to = LESS_OFTEN[s.task.cadence];
   if (!to) return null;
   const recent = s.judged.filter((j) => ['onTime', 'late', 'missed', 'deferred'].includes(j.outcome)).slice(-4);
   let streak = 0;
-  for (let i = recent.length - 1; i >= 0 && recent[i].outcome === 'deferred'; i--) streak++;
+  for (let i = recent.length - 1; i >= 0 && recent[i].outcome === 'deferred' && reasonSuggests(recent[i].occ?.deferReason); i--) streak++;
   if (streak >= 3) return { task: s.task, kind: 'setAside', to, count: streak };
   const slow = recent.filter((j) => j.outcome === 'late' || j.outcome === 'missed').length;
   if (recent.length >= 4 && slow >= 3) return { task: s.task, kind: 'late', to, count: slow };

@@ -12,6 +12,7 @@ import {
   cadenceWord,
   countWord,
   departmentStats,
+  isWeather,
   mostCommon,
   rangeFor,
   scoreOf,
@@ -189,7 +190,7 @@ function statusCopy(d: DepartmentStats, range: Range, reason: string | null, sli
       body: `Most of what is planned here found its time this ${range}.${slipping ? ' A task or two below could use a small change.' : ''}`,
     };
   }
-  if (reason === 'Weather') {
+  if (isWeather(reason)) {
     return {
       title: 'Seasonal work is waiting on good weather',
       body: 'Most of what has been set aside is weather-dependent, so this is a natural pause. A day or two set aside could clear most of it.',
@@ -202,12 +203,12 @@ function statusCopy(d: DepartmentStats, range: Range, reason: string | null, sli
 }
 
 function cadenceLabel(score: number | null, t: { deferred: number }, rows: TaskStats[], reason: string | null) {
-  if (score === null) return t.deferred > 0 && reason === 'Weather' ? 'Waiting on weather' : 'Not enough yet';
+  if (score === null) return t.deferred > 0 && isWeather(reason) ? 'Waiting on weather' : 'Not enough yet';
   const allDone = rows.every((s) => s.judged.every((j) => j.outcome !== 'missed' && j.outcome !== 'late'));
   if (score === 100 && allDone) return 'All done';
   if (score >= 85) return 'Mostly steady';
   if (score >= 65) return 'Finding its way';
-  return reason === 'Weather' ? 'Waiting on weather' : 'Ready for a reset';
+  return isWeather(reason) ? 'Waiting on weather' : 'Ready for a reset';
 }
 
 function SlipCard({ s, kind, range }: { s: TaskStats; kind: SlipKind; range: Range }) {

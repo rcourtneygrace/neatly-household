@@ -88,10 +88,13 @@ export interface Occurrence extends SyncFields {
   periodEnd: ISODate;
   /** The day it is due, when the task has a specific day */
   dueDate?: ISODate | null;
-  /** Set by Build Your Day or "Give it a day" */
+  /** The day it is on Today's list: a Build Your Day pick, or a pushed / "Give it a day" day */
   plannedFor?: ISODate | null;
+  /** true when plannedFor was set by "Push to a later date" or "Give it a day": locked on that day */
+  pinned?: boolean;
   status: OccurrenceStatus;
   completedAt?: ISODateTime | null;
+  /** Skip reason ("deferred" in code, "Skip" on screen); null when skipped without a reason */
   deferReason?: string | null;
 }
 
@@ -103,11 +106,20 @@ export interface DayLog extends SyncFields {
   closingAt?: ISODateTime | null;
   tasksPlanned: number;
   tasksCompleted: number;
+  /** Build Your Day finished for this day */
+  dayBuilt?: boolean;
+  /** Build Your Day closed without building (Today shows "Plan my day") */
+  dayDismissed?: boolean;
+  /** The day's list as built: locked (fixed for today) or chosen */
+  picks?: { taskId: ID; kind: 'locked' | 'chosen' }[];
 }
 
 export interface VacationPeriod extends SyncFields {
   startDate: ISODate;
-  endDate: ISODate;
+  /** null while vacation mode is on */
+  endDate: ISODate | null;
+  /** The one-time "Welcome back" card was dismissed */
+  welcomeSeen?: boolean;
 }
 
 export interface DetailRow {

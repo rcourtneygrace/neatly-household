@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './db';
 import { ensureSeeded } from './seed';
 import { saveTask } from './tasks';
-import { completeClosing, completeOpening, deferItem, planForToday, reopenDay, setDone } from './today';
+import { completeClosing, completeOpening, endVacation, planForToday, pushTo, reopenDay, setDone, skipItem, startVacation, undo } from './today';
 import type { TodayItem } from '../domain/schedule';
 
 let item: TodayItem;
@@ -25,6 +25,7 @@ beforeEach(async () => {
   item = {
     task,
     inst: { key: '2026-10-11', start: '2026-10-11', end: '2026-10-17', due: null },
+    kind: 'offer',
     tag: 'priority',
     done: false,
     planned: false,
@@ -46,12 +47,36 @@ describe('Today actions', () => {
     expect(await db.occurrences.count()).toBe(2); // updated in place, not duplicated
   });
 
-  it('defer sets the instance (and the missed one) aside with a reason', async () => {
-    await deferItem(item, 'Weather');
+  it('skip sets the instance (and the missed one) aside with a reason, and Undo restores it', async () => {
+    await setDone(item, false);
+    const snap = await skipItem(item, 'Weather');
     const o = await occ('2026-10-11');
     expect(o?.status).toBe('deferred');
     expect(o?.deferReason).toBe('Weather');
     expect((await occ('2026-10-04'))?.status).toBe('deferred');
+    await undo(snap);
+    expect((await occ('2026-10-11'))?.status).toBe('open');
+    expect((await occ('2026-10-04'))?.status).toBe('open');
+  });
+
+  it('skip without a reason, and an Undo of a first-ever skip removes the row', async () => {
+    const snap = await skipItem(item, null);
+    expect((await occ('2026-10-11'))?.deferReason).toBeNull();
+    await undo(snap);
+    expect(await db.occurrences.count()).toBe(0);
+  });
+
+  it('push to a later date pins the task to that day', async () => {
+    await pushTo(item, '2026-10-20');
+    expect(await occ('2026-10-11')).toMatchObject({ plannedFor: '2026-10-20', pinned: true, status: 'open' });
+  });
+
+  it('vacation on and off', async () => {
+    await startVacation('2026-10-01');
+    await startVacation('2026-10-02'); // already on: no second period
+    expect((await db.vacations.toArray()).map((v) => v.endDate)).toEqual([null]);
+    await endVacation('2026-10-09');
+    expect((await db.vacations.toArray())[0]).toMatchObject({ startDate: '2026-10-01', endDate: '2026-10-09' });
   });
 
   it('Build Your Day marks picks for today without changing their status', async () => {

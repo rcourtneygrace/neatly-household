@@ -1,26 +1,30 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Icon, Wordmark } from '../../ui';
-import { ActionSheet } from '../../ui/ActionSheet';
 import { useNow } from '../../ui/useNow';
 import {
-  DEFER_REASONS,
+  buildDay,
   completeClosing,
   completeOpening,
-  deferItem,
-  planForToday,
+  dismissBuildDay,
+  dismissWelcomeBack,
+  endVacation,
   reopenDay,
   setDone,
-  unplan,
+  skipItem,
+  undo,
   useTodayData,
   type TodayData,
+  type UndoSnapshot,
 } from '../../data/today';
 import type { RoutineTemplate } from '../../data/types';
 import { addDays, clockTime, hhmmLabel, longDate, minutesOf, toDay, weekdayOf, type Day } from '../../domain/dates';
-import { buildCandidates, buildToday, plainMeta, type TodayItem, type TodayView } from '../../domain/schedule';
+import { buildToday, inVacation, plainMeta, type TodayItem, type TodayView } from '../../domain/schedule';
 import { BuildYourDay } from './BuildYourDay';
+import { SkipSheet, TaskActionsSheet } from './TaskActionsSheet';
 import { MetaLine, TagPill } from './rows';
 import './today.css';
+import './task-sheet.css';
 
 /** Closing shows this long before the close time (Settings → Business hours). */
 const CLOSING_LEAD_MINUTES = 60;
@@ -40,30 +44,36 @@ function hoursFor(day: Day, data: TodayData) {
   return weekend ? { open: h.weekendOpen, close: h.weekendClose } : { open: h.weekdayOpen, close: h.weekdayClose };
 }
 
-function Today({ data, now, T }: { data: TodayData; now: Date; T: Day }) {
-  const navigate = useNavigate();
-  const { household } = data;
-  const [building, setBuilding] = useState(false);
-  const [actionsFor, setActionsFor] = useState<TodayItem | null>(null);
-  const [deferFor, setDeferFor] = useState<TodayItem | null>(null);
-
+function useTodayView(data: TodayData, T: Day): { view: TodayView; openedDays: Set<Day> } {
   const openedDays = useMemo(
     () => new Set(data.dayLogs.filter((l) => l.openingStatus === 'done').map((l) => l.date)),
     [data.dayLogs],
   );
-  const cal = household;
+  const { household } = data;
   const view = useMemo(
     () =>
       buildToday({
         today: T,
         tasks: data.tasks,
         occurrences: data.occurrences,
-        cal,
+        cal: household,
         clearWhenChecked: household.clearWhenChecked,
         openedDays,
+        vacations: data.vacations,
       }),
-    [T, data.tasks, data.occurrences, cal, household.clearWhenChecked, openedDays],
+    [T, data.tasks, data.occurrences, household, openedDays, data.vacations],
   );
+  return { view, openedDays };
+}
+
+function Today({ data, now, T }: { data: TodayData; now: Date; T: Day }) {
+  const navigate = useNavigate();
+  const { household } = data;
+  const [building, setBuilding] = useState(false);
+  const [actionsFor, setActionsFor] = useState<TodayItem | null>(null);
+  const [skipFor, setSkipFor] = useState<TodayItem | null>(null);
+  const [toast, setToast] = useState<{ text: string; snap: UndoSnapshot } | null>(null);
+  const { view, openedDays } = useTodayView(data, T);
   const dept = useMemo(() => new Map(data.departments.map((d) => [d.id, d.name])), [data.departments]);
   const deptName = (id: string) => dept.get(id) ?? '';
 
@@ -73,20 +83,59 @@ function Today({ data, now, T }: { data: TodayData; now: Date; T: Day }) {
   const hours = hoursFor(T, data);
   const closingTime = minutesOf(hours.close) - CLOSING_LEAD_MINUTES;
   const showClosing = minutesOf(now) >= closingTime;
-  const candidates = buildCandidates(view);
+  const away = inVacation(T, data.vacations, T) && data.vacations.some((v) => v.endDate === null);
+  const welcome = !away ? data.vacations.find((v) => v.endDate !== null && !v.welcomeSeen) : undefined;
 
   const onMarkOpening = async () => {
     await completeOpening(T);
-    if (candidates.length > 0) setBuilding(true);
+    // Build Your Day opens once a day, right after Opening (never on vacation)
+    if (!log?.dayBuilt && !log?.dayDismissed) setBuilding(true);
   };
   const onMarkClosing = async () => {
     const all = [...view.daily, ...view.inProgress];
     await completeClosing(T, { planned: all.length, completed: all.filter((i) => i.done).length });
   };
+  const onSkip = async (item: TodayItem, reason: string | null) => {
+    const snap = await skipItem(item, reason);
+    setToast({ text: `Skipped ${item.task.name}.`, snap });
+  };
+
+  if (away) {
+    return (
+      <main className="screen today">
+        <TodayHeader name={household.name} now={now} onSettings={() => navigate('/settings')} />
+        <div className="today__body">
+          <section className="away-card" aria-labelledby="away-title">
+            <span className="closed-hero__badge" aria-hidden>
+              <Icon name="sun" size={24} />
+            </span>
+            <h2 id="away-title" className="closed-hero__title">
+              Out of office
+            </h2>
+            <p className="closed-hero__sub">Nothing will count against you while you&rsquo;re away.</p>
+            <button type="button" className="outline-button outline-button--wide" onClick={() => endVacation(T)}>
+              Turn off vacation mode
+            </button>
+          </section>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="screen today">
       <TodayHeader name={household.name} now={now} onSettings={() => navigate('/settings')} />
+
+      {welcome && (
+        <div className="today__body today__body--top">
+          <div className="welcome-card" role="status">
+            <p>Welcome back. Start with Opening when you&rsquo;re ready.</p>
+            <button type="button" className="welcome-card__close" onClick={() => dismissWelcomeBack(welcome.id)}>
+              <Icon name="close" size={18} label="Dismiss" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {closed ? (
         <ClosedView data={data} view={view} T={T} openedDays={openedDays} deptName={deptName} />
@@ -98,7 +147,9 @@ function Today({ data, now, T }: { data: TodayData; now: Date; T: Day }) {
           {opened && <OpenedBanner at={log?.openingAt} />}
           {showClosing && <RoutineCard routine={data.routines.closing} type="closing" onComplete={onMarkClosing} />}
 
-          {view.daily.length > 0 && <DailySection items={view.daily} deptName={deptName} T={T} />}
+          {view.daily.length > 0 && (
+            <DailySection items={view.daily} deptName={deptName} T={T} onMore={(i) => setActionsFor(i)} />
+          )}
 
           <section className="today-section" aria-labelledby="in-progress">
             <div className="today-section__head today-section__head--stack">
@@ -107,9 +158,9 @@ function Today({ data, now, T }: { data: TodayData; now: Date; T: Day }) {
                 <h2 id="in-progress" className="today-section__title">
                   In Progress
                 </h2>
-                {opened && candidates.length > 0 && (
+                {opened && (
                   <button type="button" className="today-section__action" onClick={() => setBuilding(true)}>
-                    Build your day
+                    {log?.dayBuilt ? 'Edit my day' : 'Plan my day'}
                   </button>
                 )}
               </div>
@@ -121,8 +172,12 @@ function Today({ data, now, T }: { data: TodayData; now: Date; T: Day }) {
                     <>
                       Nothing here yet. <Link to="/plan">Add tasks in Plan</Link>.
                     </>
+                  ) : !opened ? (
+                    'Nothing fixed for today. After Opening, you can pick what to do.'
+                  ) : log?.dayBuilt ? (
+                    'All clear for today.'
                   ) : (
-                    'All caught up for now.'
+                    'Nothing on your list yet. Plan my day to pick a few.'
                   )}
                 </p>
               ) : (
@@ -157,9 +212,7 @@ function Today({ data, now, T }: { data: TodayData; now: Date; T: Day }) {
                       <div key={i.task.id} className="soon-row">
                         <div className="row-text">
                           <span className="row-text__name row-text__name--soft">{i.task.name}</span>
-                          <span className="row-text__meta">
-                            {plainMeta(i.task, deptName(i.task.departmentId))}
-                          </span>
+                          <span className="row-text__meta">{plainMeta(i.task, deptName(i.task.departmentId))}</span>
                         </div>
                         <span className="pill">{i.pill}</span>
                       </div>
@@ -176,40 +229,57 @@ function Today({ data, now, T }: { data: TodayData; now: Date; T: Day }) {
         <BuildYourDay
           view={view}
           T={T}
+          dayLogs={data.dayLogs}
+          edit={!!log?.dayBuilt}
           deptName={deptName}
-          onClose={() => setBuilding(false)}
+          onClose={async (applied) => {
+            setBuilding(false);
+            if (!applied && !log?.dayBuilt) await dismissBuildDay(T);
+          }}
           onDone={async (picked, dropped) => {
-            await planForToday(picked, T);
-            for (const d of dropped) await unplan(d);
+            await buildDay(T, picked, dropped, view.inProgress.filter((i) => i.kind === 'locked'));
             setBuilding(false);
           }}
         />
       )}
 
-      <ActionSheet
-        open={!!actionsFor}
-        title={actionsFor?.task.name}
+      <TaskActionsSheet
+        item={actionsFor}
+        department={actionsFor ? deptName(actionsFor.task.departmentId) : ''}
         onClose={() => setActionsFor(null)}
-        actions={
-          actionsFor
-            ? [
-                actionsFor.planned
-                  ? { label: 'Take off today', onSelect: () => unplan(actionsFor) }
-                  : { label: 'Do it today', onSelect: () => planForToday([actionsFor], T) },
-                { label: 'Defer', onSelect: () => setDeferFor(actionsFor) },
-                { label: 'Edit task', onSelect: () => navigate(`/plan/tasks/${actionsFor.task.id}`) },
-              ]
-            : []
-        }
+        onPush={(i) => navigate(`/today/push/${i.task.id}`)}
+        onSkip={(i) => setSkipFor(i)}
+        onEdit={(i) => navigate(`/plan/tasks/${i.task.id}`)}
       />
-      <ActionSheet
-        open={!!deferFor}
-        title={`Defer “${deferFor?.task.name}”`}
-        message="It is set aside for this time and won't be carried over. Pick a reason so Analysis can tell it apart."
-        onClose={() => setDeferFor(null)}
-        actions={DEFER_REASONS.map((r) => ({ label: r, onSelect: () => deferFor && deferItem(deferFor, r) }))}
-      />
+      <SkipSheet item={skipFor} onClose={() => setSkipFor(null)} onSkip={onSkip} />
+      {toast && <UndoToast text={toast.text} onUndo={() => undo(toast.snap)} onDone={() => setToast(null)} />}
     </main>
+  );
+}
+
+/** "Skipped <task>. Undo" for about 5 seconds. */
+function UndoToast({ text, onUndo, onDone }: { text: string; onUndo: () => void; onDone: () => void }) {
+  const done = useRef(onDone);
+  useEffect(() => {
+    done.current = onDone;
+  });
+  useEffect(() => {
+    const id = window.setTimeout(() => done.current(), 5000);
+    return () => window.clearTimeout(id);
+  }, [text]);
+  return (
+    <div className="undo-toast" role="status">
+      <span>{text}</span>
+      <button
+        type="button"
+        onClick={() => {
+          onUndo();
+          onDone();
+        }}
+      >
+        Undo
+      </button>
+    </div>
   );
 }
 
@@ -338,7 +408,17 @@ function TaskCheckRow({
 
 /* ---------- Daily Tasks (Figma 16:2059, collapsed 16:2221) ---------- */
 
-function DailySection({ items, deptName, T }: { items: TodayItem[]; deptName: (id: string) => string; T: Day }) {
+function DailySection({
+  items,
+  deptName,
+  T,
+  onMore,
+}: {
+  items: TodayItem[];
+  deptName: (id: string) => string;
+  T: Day;
+  onMore: (i: TodayItem) => void;
+}) {
   const [showDone, setShowDone] = useState(false);
   const doneCount = items.filter((i) => i.done).length;
   const allDone = doneCount === items.length;
@@ -370,7 +450,13 @@ function DailySection({ items, deptName, T }: { items: TodayItem[]; deptName: (i
       ) : (
         <div className="today-card">
           {items.map((item) => (
-            <TaskCheckRow key={item.task.id} item={item} department={deptName(item.task.departmentId)} T={T} />
+            <TaskCheckRow
+              key={item.task.id}
+              item={item}
+              department={deptName(item.task.departmentId)}
+              T={T}
+              onMore={() => onMore(item)}
+            />
           ))}
           {allDone && (
             <button type="button" className="today-card__more" onClick={() => setShowDone(false)}>
@@ -416,8 +502,9 @@ function ClosedView({
     cal: data.household,
     clearWhenChecked: true,
     openedDays: new Set([...openedDays, T]),
+    vacations: data.vacations,
   });
-  const priorityTomorrow = next.inProgress.filter((i) => i.priority).length;
+  const priorityTomorrow = [...next.inProgress, ...next.offers].filter((i) => i.priority).length;
   const carryPriority = carry.filter((i) => i.priority).length;
 
   return (

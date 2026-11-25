@@ -152,17 +152,28 @@ export function instancesAround(task: Task, day: Day, cal: PlanCalendar): Instan
 
 export type Tag = 'priority' | 'today' | 'headsUp';
 
+/**
+ * daily: Daily Tasks. locked: fixed for today (a set day that is today, or pushed to today).
+ * picked: chosen in Build Your Day (or carried over from an earlier pick). offer: not on today's
+ * list; offered in Build Your Day.
+ */
+export type ItemKind = 'daily' | 'locked' | 'picked' | 'offer';
+
 export interface TodayItem {
   task: Task;
   inst: Instance;
+  kind: ItemKind;
   tag: Tag | null;
   /** Checked off today (shown crossed out) */
   done: boolean;
-  /** Picked in Build Your Day */
+  /** On today's list because it was picked (Build Your Day) */
   planned: boolean;
+  /** A missed window, carried over: offered first in Build Your Day */
   priority: boolean;
   /** The missed instance this row carries over (its date is the one shown) */
   carriedFrom?: Instance;
+  /** A pick from an earlier day that is still unfinished ("Carried over") */
+  carriedPick?: boolean;
 }
 
 export interface ComingSoonGroup {
@@ -172,8 +183,16 @@ export interface ComingSoonGroup {
 
 export interface TodayView {
   daily: TodayItem[];
+  /** Today's list: locked tasks and picks (and anything checked off today) */
   inProgress: TodayItem[];
+  /** Not on today's list; what Build Your Day offers, by the rules in the Build Your Day doc */
+  offers: TodayItem[];
   comingSoon: ComingSoonGroup[];
+}
+
+export interface VacationSpan {
+  startDate: Day;
+  endDate: Day | null;
 }
 
 export interface TodayInput {
@@ -184,6 +203,8 @@ export interface TodayInput {
   clearWhenChecked: boolean;
   /** Days the household was opened; a daily task rolls over as Priority only after an opened day. */
   openedDays: Set<Day>;
+  /** Vacation periods: nothing that ends inside one is carried over or counted */
+  vacations?: VacationSpan[];
 }
 
 export function occKey(taskId: string, key: Day): string {
@@ -198,20 +219,41 @@ function completedOn(o: Occurrence | undefined): Day | null {
   return o?.status === 'done' && o.completedAt ? toDay(new Date(o.completedAt)) : null;
 }
 
+export function inVacation(day: Day, vacations: VacationSpan[] | undefined, today: Day): boolean {
+  return !!vacations?.some((v) => v.startDate <= day && day <= (v.endDate ?? today));
+}
+
+function vacationBetween(from: Day, to: Day, vacations: VacationSpan[] | undefined, today: Day): boolean {
+  return !!vacations?.some((v) => v.startDate <= to && (v.endDate ?? today) >= from);
+}
+
+/** How far ahead a set day may be for Build Your Day to offer it (doc: weekly 2, monthly 4, seasonal and yearly 7). */
+const OFFER_DAYS: Record<Cadence, number> = { daily: 0, weekly: 2, monthly: 4, seasonal: 7, yearly: 7 };
+
+function occInstance(o: Occurrence): Instance {
+  return { key: o.periodStart, start: o.periodStart, end: o.periodEnd, due: o.dueDate ?? null };
+}
+
 export function buildToday(input: TodayInput): TodayView {
-  const { today: T, cal } = input;
+  const { today: T, cal, vacations } = input;
   const occ = new Map(input.occurrences.map((o) => [occKey(o.taskId, o.periodStart), o]));
-  // "Give it a day": an instance planned for today shows even outside its usual window
-  const plannedToday = new Map(input.occurrences.filter((o) => o.plannedFor === T).map((o) => [o.taskId, o]));
+  const byTask = new Map<string, Occurrence[]>();
+  for (const o of input.occurrences) {
+    const list = byTask.get(o.taskId) ?? [];
+    list.push(o);
+    byTask.set(o.taskId, list);
+  }
   const get = (t: Task, i: Instance | undefined) => (i ? occ.get(occKey(t.id, i.key)) : undefined);
 
   const daily: TodayItem[] = [];
   const inProgress: TodayItem[] = [];
+  const offers: TodayItem[] = [];
   const soon: { task: Task; when: Day }[] = [];
 
   for (const task of input.tasks) {
     if (task.paused || task.archived || task.deletedAt) continue;
     const since = activeSince(task);
+    const own = byTask.get(task.id) ?? [];
 
     if (task.cadence === 'daily') {
       const inst: Instance = { key: T, start: T, end: T, due: null };
@@ -223,69 +265,119 @@ export function buildToday(input: TodayInput): TodayView {
         o?.status !== 'done' &&
         yesterday >= since &&
         input.openedDays.has(yesterday) &&
+        !inVacation(yesterday, vacations, T) &&
         y?.status !== 'done' &&
         y?.status !== 'deferred';
-      daily.push({ task, inst, tag: priority ? 'priority' : null, done: o?.status === 'done', planned: false, priority });
+      daily.push({
+        task,
+        inst,
+        kind: 'daily',
+        tag: priority ? 'priority' : null,
+        done: o?.status === 'done',
+        planned: false,
+        priority,
+      });
       continue;
     }
+
+    // Pushed to a later day: off today's list and not offered until then
+    if (own.some((o) => o.pinned && o.status === 'open' && o.plannedFor && o.plannedFor > T)) continue;
 
     const insts = instancesAround(task, T, cal);
     const cur = insts.find((i) => i.start <= T && T <= i.end);
     const last = [...insts].reverse().find((i) => i.end < T);
     const next = insts.find((i) => i.start > T);
     const missed = (i: Instance | undefined) => {
-      if (!i || i.end < since) return false;
-      const s = get(task, i)?.status;
-      return s !== 'done' && s !== 'deferred';
+      if (!i || i.end < since || inVacation(i.end, vacations, T)) return false;
+      const o = get(task, i);
+      if (o?.pinned) return false; // a pushed day is never carried over
+      return o?.status !== 'done' && o?.status !== 'deferred';
     };
+    const curOcc = get(task, cur);
 
     let row: TodayItem | null = null;
-    const curOcc = get(task, cur);
-    const lastOcc = get(task, last);
+    const doneToday = own.find((o) => completedOn(o) === T);
+    const pinnedToday = own.find((o) => o.pinned && o.plannedFor === T && o.status === 'open');
+    const pickedToday = own.find((o) => !o.pinned && o.plannedFor === T && o.status === 'open');
+    const carried = own
+      .filter(
+        (o) =>
+          o.plannedFor &&
+          o.plannedFor < T &&
+          o.status === 'open' &&
+          !vacationBetween(o.plannedFor, T, vacations, T) &&
+          !(cur && curOcc?.status === 'done'),
+      )
+      .sort((a, b) => (b.plannedFor ?? '').localeCompare(a.plannedFor ?? ''))[0];
 
-    if (cur && curOcc?.status !== 'deferred' && (curOcc?.status !== 'done' || completedOn(curOcc) === T)) {
-      const done = curOcc?.status === 'done';
-      const carried = !done && missed(last);
-      row = {
-        task,
-        inst: cur,
-        done,
-        priority: carried,
-        planned: curOcc?.plannedFor === T,
-        tag: null,
-        carriedFrom: carried ? last : undefined,
-      };
-    } else if (last && (missed(last) || completedOn(lastOcc) === T) && !(cur && curOcc?.status === 'done')) {
-      const done = lastOcc?.status === 'done';
-      row = { task, inst: last, done, priority: !done, planned: lastOcc?.plannedFor === T, tag: null };
-    }
-
-    const p = plannedToday.get(task.id);
-    if (!row && p && p.status !== 'deferred' && (p.status !== 'done' || completedOn(p) === T)) {
-      const inst: Instance = { key: p.periodStart, start: p.periodStart, end: p.periodEnd, due: p.dueDate ?? null };
-      row = { task, inst, done: p.status === 'done', priority: false, planned: true, tag: null };
+    if (doneToday) {
+      const kind: ItemKind = doneToday.pinned || doneToday.dueDate === T ? 'locked' : 'picked';
+      row = { task, inst: occInstance(doneToday), kind, done: true, planned: kind === 'picked', priority: false, tag: null };
+    } else if (pinnedToday) {
+      row = { task, inst: occInstance(pinnedToday), kind: 'locked', done: false, planned: false, priority: false, tag: null };
+    } else if (cur?.due === T && curOcc?.status !== 'deferred' && curOcc?.status !== 'done') {
+      row = { task, inst: cur, kind: 'locked', done: false, planned: false, priority: false, tag: null };
+    } else if (pickedToday) {
+      const inst = occInstance(pickedToday);
+      const isLast = last && inst.key === last.key;
+      row = { task, inst, kind: 'picked', done: false, planned: true, priority: !!isLast, tag: null };
+    } else if (carried) {
+      row = { task, inst: occInstance(carried), kind: 'picked', done: false, planned: true, priority: false, carriedPick: true, tag: null };
     }
 
     if (row) {
       row.tag = tagFor(row, T);
       if (!(row.done && input.clearWhenChecked)) inProgress.push(row);
+      continue;
     }
-    const showing = row && !row.done;
-    if (!showing && next && (task.cadence === 'monthly' || task.cadence === 'seasonal' || task.cadence === 'yearly')) {
+
+    // Not on today's list: what Build Your Day may offer
+    let offer: TodayItem | null = null;
+    if (cur && curOcc?.status !== 'deferred' && curOcc?.status !== 'done') {
+      const carriedOver = missed(last);
+      offer = {
+        task,
+        inst: cur,
+        kind: 'offer',
+        done: false,
+        planned: false,
+        priority: carriedOver,
+        carriedFrom: carriedOver ? last : undefined,
+        tag: null,
+      };
+    } else if (missed(last) && !(cur && curOcc?.status === 'done')) {
+      offer = { task, inst: last!, kind: 'offer', done: false, planned: false, priority: true, tag: null };
+    }
+    if (offer) {
+      const due = offer.inst.due;
+      const near = !due || offer.priority || (daysBetween(T, due) >= 1 && daysBetween(T, due) <= OFFER_DAYS[task.cadence]);
+      if (near) {
+        offer.tag = tagFor(offer, T);
+        offers.push(offer);
+        continue;
+      }
+    }
+    if (next && (task.cadence === 'monthly' || task.cadence === 'seasonal' || task.cadence === 'yearly')) {
       soon.push({ task, when: next.due ?? next.start });
     }
   }
 
   daily.sort((a, b) => a.task.name.localeCompare(b.task.name));
-  inProgress.sort((a, b) => rank(a, T) - rank(b, T) || (a.inst.due ?? a.inst.end).localeCompare(b.inst.due ?? b.inst.end) || a.task.name.localeCompare(b.task.name));
+  inProgress.sort((a, b) => rank(a) - rank(b) || a.task.name.localeCompare(b.task.name));
+  offers.sort(
+    (a, b) =>
+      offerRank(a, T) - offerRank(b, T) ||
+      (a.inst.due ?? a.inst.end).localeCompare(b.inst.due ?? b.inst.end) ||
+      a.task.name.localeCompare(b.task.name),
+  );
 
-  return { daily, inProgress, comingSoon: groupComingSoon(soon, T) };
+  return { daily, inProgress, offers, comingSoon: groupComingSoon(soon, T) };
 }
 
 function tagFor(item: TodayItem, T: Day): Tag | null {
-  if (item.done) return null;
+  if (item.done || item.carriedPick) return null;
   if (item.priority) return 'priority';
-  if (item.planned) return 'today';
+  if (item.kind === 'locked' || item.kind === 'picked') return 'today';
   if (item.inst.due) {
     const d = daysBetween(T, item.inst.due);
     if (d === 0) return 'today';
@@ -294,17 +386,19 @@ function tagFor(item: TodayItem, T: Day): Tag | null {
   return null;
 }
 
-/** Priority first, then picked-for-today and due today, Heads up, quiet dated rows, then the rest. */
-function rank(i: TodayItem, T: Day): number {
+/** Today's list: Priority picks, then locked, then picks, then carried-over picks. Done rows keep their place. */
+function rank(i: TodayItem): number {
   if (i.priority) return 0;
-  if (i.planned) return 1;
-  if (i.inst.due) {
-    const d = daysBetween(T, i.inst.due);
-    if (d <= 0) return 1;
-    if (d <= HEADS_UP_DAYS) return 2;
-    return 3;
-  }
-  return 4;
+  if (i.kind === 'locked') return 1;
+  if (i.carriedPick) return 3;
+  return 2;
+}
+
+/** Build Your Day order: Priority, then Heads up, then the rest. */
+export function offerRank(i: TodayItem, T: Day): number {
+  if (i.priority) return 0;
+  if (i.inst.due && daysBetween(T, i.inst.due) <= HEADS_UP_DAYS) return 1;
+  return 2;
 }
 
 function groupComingSoon(items: { task: Task; when: Day }[], T: Day): ComingSoonGroup[] {
@@ -363,6 +457,7 @@ export interface RowMeta {
 export function rowMeta(item: TodayItem, department: string, T: Day): RowMeta {
   const label = cadenceShort(item.task);
   const due = item.inst.due;
+  if (item.carriedPick && !item.done) return { text: `${department} · ${label} · `, emphasis: 'Carried over', clay: false };
   if (item.priority && !item.done) {
     const missedDue = item.carriedFrom ? item.carriedFrom.due : due;
     return { text: missedDue ? `${department} · ${label} · ${shortDate(missedDue)}` : `${department} · ${label}`, clay: true };
@@ -380,7 +475,7 @@ export function plainMeta(task: Task, department: string): string {
   return `${department} · ${cadenceShort(task)}`;
 }
 
-/** In Progress tasks still to do: what Build Your Day offers. */
+/** What Build Your Day offers. */
 export function buildCandidates(view: TodayView): TodayItem[] {
-  return view.inProgress.filter((i) => !i.done);
+  return view.offers;
 }

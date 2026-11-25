@@ -46,6 +46,7 @@ const router = createHashRouter([
   { path: '/plan/routine/:type', element: <RoutineEditScreen /> },
   { path: '/analysis/monthly', element: <AdjustMonthlyScreen /> },
   { path: '/analysis/give/:taskId', element: <GiveADayScreen /> },
+  { path: '/today/push/:taskId', element: <GiveADayScreen mode="push" /> },
   { path: '/settings', element: <SettingsScreen /> },
   { path: '/settings/plan', element: <PlanSettingsScreen /> },
   { path: '/settings/plan/seasons', element: <SeasonsScreen /> },

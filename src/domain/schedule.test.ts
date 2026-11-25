@@ -58,83 +58,101 @@ describe('instancesAround', () => {
   });
 });
 
-describe('buildToday tags (Figma Today, Oct 15)', () => {
-  it('Heads up two days before a set day, quiet before that, Today on the day', () => {
+describe('Today\'s list and Build Your Day offers (Oct 15)', () => {
+  const names = (items: { task: Task }[]) => items.map((i) => i.task.name);
+
+  it('a set day that is today is locked on today; nearby set days are offered with Heads up; far ones wait', () => {
     const kettle = task({ name: 'Descale the kettle', cadence: 'monthly', timingMode: 'specific', timingValue: 17 });
     const filter = task({ name: 'Dishwasher filter', cadence: 'monthly', timingMode: 'specific', timingValue: 15 });
-    const quiet = task({ name: 'Wipe vents', cadence: 'monthly', timingMode: 'specific', timingValue: 19 });
-    const later = task({ name: 'Not yet', cadence: 'monthly', timingMode: 'specific', timingValue: 25 });
-    const v = view([kettle, filter, quiet, later]);
-    const tag = (name: string) => v.inProgress.find((i) => i.task.name === name)?.tag;
-    expect(tag('Descale the kettle')).toBe('headsUp');
-    expect(tag('Dishwasher filter')).toBe('today');
-    expect(tag('Wipe vents')).toBeNull();
-    expect(v.inProgress.find((i) => i.task.name === 'Not yet')).toBeUndefined();
+    const four = task({ name: 'Wipe vents', cadence: 'monthly', timingMode: 'specific', timingValue: 19 });
+    const far = task({ name: 'Not yet', cadence: 'monthly', timingMode: 'specific', timingValue: 25 });
+    const v = view([kettle, filter, four, far]);
+    expect(v.inProgress.map((i) => [i.task.name, i.kind, i.tag])).toEqual([['Dishwasher filter', 'locked', 'today']]);
+    expect(v.offers.map((i) => [i.task.name, i.tag])).toEqual([
+      ['Descale the kettle', 'headsUp'],
+      ['Wipe vents', null], // monthly: offered up to 4 days ahead
+    ]);
+    expect(names(v.comingSoon.flatMap((g) => g.items))).toContain('Not yet');
   });
 
-  it('a missed set day is carried over as Priority, with its date', () => {
-    const patio = task({
-      name: 'Put away the patio furniture',
-      timingMode: 'specific',
-      timingValue: [6],
-      activeSince: LONG_AGO,
-    });
-    const v = view([patio]);
-    const row = v.inProgress[0];
-    expect(v.inProgress).toHaveLength(1); // one row, not one per Saturday
-    expect(row.tag).toBe('priority');
-    expect(row.carriedFrom?.due).toBe('2026-10-10');
-    expect(rowMeta(row, 'Grounds', T)).toEqual({ text: 'Grounds · Saturdays · Oct 10', clay: true });
+  it('weekly set days are offered only up to 2 days ahead', () => {
+    const sat = task({ name: 'Saturday job', timingMode: 'specific', timingValue: [6] }); // Oct 17, 2 days
+    const sun = task({ name: 'Sunday job', timingMode: 'specific', timingValue: [0] }); // Oct 18, 3 days
+    expect(names(view([sat, sun]).offers)).toEqual(['Saturday job']);
   });
 
-  it('a done or set-aside instance is not carried over', () => {
-    const patio = task({ timingMode: 'specific', timingValue: [6], activeSince: LONG_AGO });
-    expect(view([patio], [occ(patio, '2026-10-10')]).inProgress[0].tag).toBe('headsUp');
-    expect(view([patio], [occ(patio, '2026-10-10', { status: 'deferred' })]).inProgress[0].tag).toBe('headsUp');
+  it('unpicked tasks stay off Today and are offered; a missed window is offered as Priority with its date', () => {
+    const towels = task({ name: 'Wash the towels' });
+    const patio = task({ name: 'Put away the patio furniture', timingMode: 'specific', timingValue: [6], activeSince: LONG_AGO });
+    const v = view([towels, patio]);
+    expect(v.inProgress).toHaveLength(0);
+    expect(names(v.offers)).toEqual(['Put away the patio furniture', 'Wash the towels']);
+    const p = v.offers[0];
+    expect(p.tag).toBe('priority');
+    expect(p.carriedFrom?.due).toBe('2026-10-10');
+    expect(rowMeta(p, 'Grounds', T)).toEqual({ text: 'Grounds · Saturdays · Oct 10', clay: true });
   });
 
-  it('nothing from before the task was added is carried over', () => {
-    const patio = task({ timingMode: 'specific', timingValue: [6], activeSince: '2026-10-12' });
-    expect(view([patio]).inProgress[0].priority).toBe(false);
+  it('a done or skipped window is not carried over, and nothing from before the task was added', () => {
+    const towels = task({ activeSince: LONG_AGO });
+    expect(view([towels], [occ(towels, '2026-10-04')]).offers[0].priority).toBe(false);
+    expect(view([towels], [occ(towels, '2026-10-04', { status: 'deferred' })]).offers[0].priority).toBe(false);
+    expect(view([task({})]).offers[0].priority).toBe(false);
   });
 
-  it('"every week" tasks show untagged all week, and Priority when last week was missed', () => {
-    const towels = task({ name: 'Wash the towels', activeSince: LONG_AGO });
-    const lastWeekDone = view([towels], [occ(towels, '2026-10-04')]);
-    expect(lastWeekDone.inProgress[0].tag).toBeNull();
-    expect(view([towels]).inProgress[0].tag).toBe('priority');
+  it('a pick is on Today with the Today tag, and an unfinished pick carries over the next day', () => {
+    const towels = task({});
+    const picked = view([towels], [occ(towels, '2026-10-11', { status: 'open', plannedFor: T })]);
+    expect(picked.inProgress.map((i) => [i.kind, i.tag])).toEqual([['picked', 'today']]);
+    expect(picked.offers).toHaveLength(0);
+    const nextDay = view([towels], [occ(towels, '2026-10-11', { status: 'open', plannedFor: '2026-10-14' })]);
+    expect(nextDay.inProgress[0].carriedPick).toBe(true);
+    expect(nextDay.inProgress[0].priority).toBe(false);
+    expect(rowMeta(nextDay.inProgress[0], 'Laundry', T).emphasis).toBe('Carried over');
+  });
+
+  it('push to a later date: off Today until that day, then locked', () => {
+    const towels = task({});
+    const pushed = [occ(towels, '2026-10-11', { status: 'open', plannedFor: '2026-10-17', pinned: true })];
+    const now = view([towels], pushed);
+    expect(now.inProgress).toHaveLength(0);
+    expect(now.offers).toHaveLength(0);
+    const then = view([towels], pushed, { today: '2026-10-17' });
+    expect(then.inProgress.map((i) => i.kind)).toEqual(['locked']);
   });
 
   it('checked rows stay crossed out today, and leave the list when "clear when checked" is on', () => {
-    const towels = task({ name: 'Wash the towels' });
-    const done = occ(towels, '2026-10-11', { completedAt: new Date(2026, 9, 15, 9).toISOString() });
-    const prev = occ(towels, '2026-10-04');
-    expect(view([towels], [done, prev]).inProgress[0].done).toBe(true);
-    expect(view([towels], [done, prev], { clearWhenChecked: true }).inProgress).toHaveLength(0);
+    const towels = task({});
+    const done = occ(towels, '2026-10-11', { completedAt: new Date(2026, 9, 15, 9).toISOString(), plannedFor: T });
+    expect(view([towels], [done]).inProgress[0].done).toBe(true);
+    expect(view([towels], [done], { clearWhenChecked: true }).inProgress).toHaveLength(0);
   });
 
-  it('a task finished earlier in its period is hidden', () => {
+  it('a task finished earlier in its period is neither on Today nor offered', () => {
     const towels = task({});
     const done = occ(towels, '2026-10-11', { completedAt: new Date(2026, 9, 12, 9).toISOString() });
-    expect(view([towels], [done]).inProgress).toHaveLength(0);
+    const v = view([towels], [done]);
+    expect(v.inProgress).toHaveLength(0);
+    expect(v.offers).toHaveLength(0);
   });
 
-  it('picked in Build Your Day gets the Today tag', () => {
+  it('paused tasks do not show anywhere', () => {
+    const v = view([task({ paused: true })]);
+    expect(v.inProgress.length + v.offers.length).toBe(0);
+  });
+});
+
+describe('vacation mode', () => {
+  const away = [{ startDate: '2026-10-03', endDate: '2026-10-12' }];
+  it('windows that ended during the trip are not Priority after it', () => {
+    const patio = task({ timingMode: 'specific', timingValue: [6], activeSince: LONG_AGO }); // Oct 10 in the trip
+    expect(view([patio]).offers[0].priority).toBe(true);
+    expect(view([patio], [], { vacations: away }).offers[0].priority).toBe(false);
+  });
+  it('a pick from before the trip is not carried over after it', () => {
     const towels = task({});
-    const v = view([towels], [occ(towels, '2026-10-04'), occ(towels, '2026-10-11', { status: 'open', plannedFor: T })]);
-    expect(v.inProgress[0].tag).toBe('today');
-  });
-
-  it('paused tasks do not show', () => {
-    expect(view([task({ paused: true })]).inProgress).toHaveLength(0);
-  });
-
-  it('orders Priority first, then Today, Heads up, then the rest', () => {
-    const a = task({ name: 'A untagged', cadence: 'seasonal', timingMode: 'specific', timingValue: ['fall'] });
-    const b = task({ name: 'B heads up', cadence: 'monthly', timingMode: 'specific', timingValue: 17 });
-    const c = task({ name: 'C priority', timingMode: 'specific', timingValue: [6], activeSince: LONG_AGO });
-    const d = task({ name: 'D today', cadence: 'monthly', timingMode: 'specific', timingValue: 15 });
-    expect(view([a, b, c, d]).inProgress.map((i) => i.task.name)).toEqual(['C priority', 'D today', 'B heads up', 'A untagged']);
+    const pick = occ(towels, '2026-09-27', { status: 'open', plannedFor: '2026-10-02', periodEnd: '2026-10-03' });
+    expect(view([towels], [pick], { vacations: away }).inProgress).toHaveLength(0);
   });
 });
 
