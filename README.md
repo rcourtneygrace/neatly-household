@@ -34,8 +34,8 @@ All data stays on the phone (IndexedDB). Every row has `id/createdAt/updatedAt/d
 1. App shell ✅
 2. Records ✅
 3. Plan ✅: tasks, Opening/Closing, Plan Settings, Seasons, "Suggested tasks"
-4. Today ✅ (review with owner): Opening/Closing, Daily, In Progress, Coming Soon, tags, check-off, Defer, Build Your Day, after hours
-5. Analysis: all five Figma screens
+4. Today ✅: Opening/Closing, Daily, In Progress, Coming Soon, tags, check-off, Defer, Build Your Day, after hours
+5. Analysis ✅ (review with owner): home health, department detail, adjust monthly tasks, give it a day, change how often
 6. Setup flow, vacation mode: **waiting on product spec v1**
 
 ## Decisions and open items
@@ -52,4 +52,9 @@ All data stays on the phone (IndexedDB). Every row has `id/createdAt/updatedAt/d
   over as Priority. Deferred tasks are set aside with a reason and not carried over. Daily tasks roll over as Priority
   only after a day the household was opened. Closing appears 60 minutes before the close time.
 - Tap a task's name on Today for: Do it today, Defer, Edit task.
+- Analysis (domain/analysis.ts): ring score = share of the chosen Month/Season/Year's finished windows that found their
+  time (on time 1, late ½, missed 0; set-aside left out; daily tasks only on opened days). 85+ Flowing, 65–84 Steady,
+  under 65 Ready for a reset. Suggestions need a clear pattern: 3 set-asides in a row, or late/missed 3 of the last 4.
+  "Keep it …" hides a suggestion on this phone; "Not now" until the app is reopened. Monthly balance suggests moving up
+  to 2 tasks when one week has 3+ more than the lightest.
 - App icon is a placeholder (`public/icon-*.png`) until a real one exists.

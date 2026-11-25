@@ -1,0 +1,46 @@
+import { useCallback, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import type { Range, Suggestion } from '../../domain/analysis';
+
+export const RANGES: Range[] = ['month', 'season', 'year'];
+
+export function useRange(): [Range, (r: Range) => void] {
+  const [params, setParams] = useSearchParams();
+  const r = params.get('range');
+  const range = (RANGES.includes(r as Range) ? r : 'season') as Range;
+  return [range, (next) => setParams(next === 'season' ? {} : { range: next }, { replace: true })];
+}
+
+export function suggestionKey(s: Suggestion) {
+  return `${s.task.id}:${s.kind}:${s.to}`;
+}
+
+const DISMISS_KEY = 'neatly.dismissedSuggestions';
+function readDismissed(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(DISMISS_KEY) ?? '[]');
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Suggestions the person said "Keep it…" to stay hidden on this phone. "Not now" only hides
+ * one until the app is opened again.
+ */
+export function useDismissed() {
+  const [kept, setKept] = useState<string[]>(readDismissed);
+  const [later, setLater] = useState<string[]>([]);
+  const keep = useCallback((key: string) => {
+    const next = [...readDismissed(), key];
+    try {
+      localStorage.setItem(DISMISS_KEY, JSON.stringify(next));
+    } catch {
+      /* private mode: keep it for this session only */
+    }
+    setKept(next);
+  }, []);
+  const notNow = useCallback((key: string) => setLater((l) => [...l, key]), []);
+  const isHidden = useCallback((key: string) => kept.includes(key) || later.includes(key), [kept, later]);
+  return { keep, notNow, isHidden };
+}

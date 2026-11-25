@@ -10,6 +10,9 @@ import { RecordsScreen } from './features/records/RecordsScreen';
 import { RecordDetailScreen } from './features/records/RecordDetailScreen';
 import { RecordFormScreen } from './features/records/RecordFormScreen';
 import { AnalysisScreen } from './features/analysis/AnalysisScreen';
+import { DepartmentScreen } from './features/analysis/DepartmentScreen';
+import { AdjustMonthlyScreen } from './features/analysis/AdjustMonthlyScreen';
+import { GiveADayScreen } from './features/analysis/GiveADayScreen';
 import { SettingsScreen } from './features/settings/SettingsScreen';
 
 /** Tab screens show the bottom bar; pushed screens (record detail, forms) do not. */
@@ -33,6 +36,7 @@ const router = createHashRouter([
       { path: '/records', element: <RecordsScreen /> },
       { path: '/records/:id', element: <RecordDetailScreen /> },
       { path: '/analysis', element: <AnalysisScreen /> },
+      { path: '/analysis/department/:id', element: <DepartmentScreen /> },
     ],
   },
   { path: '/records/new', element: <RecordFormScreen /> },
@@ -40,6 +44,8 @@ const router = createHashRouter([
   { path: '/plan/tasks/new', element: <TaskFormScreen /> },
   { path: '/plan/tasks/:id', element: <TaskFormScreen /> },
   { path: '/plan/routine/:type', element: <RoutineEditScreen /> },
+  { path: '/analysis/monthly', element: <AdjustMonthlyScreen /> },
+  { path: '/analysis/give/:taskId', element: <GiveADayScreen /> },
   { path: '/settings', element: <SettingsScreen /> },
   { path: '/settings/plan', element: <PlanSettingsScreen /> },
   { path: '/settings/plan/seasons', element: <SeasonsScreen /> },

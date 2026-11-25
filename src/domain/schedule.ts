@@ -201,6 +201,8 @@ function completedOn(o: Occurrence | undefined): Day | null {
 export function buildToday(input: TodayInput): TodayView {
   const { today: T, cal } = input;
   const occ = new Map(input.occurrences.map((o) => [occKey(o.taskId, o.periodStart), o]));
+  // "Give it a day": an instance planned for today shows even outside its usual window
+  const plannedToday = new Map(input.occurrences.filter((o) => o.plannedFor === T).map((o) => [o.taskId, o]));
   const get = (t: Task, i: Instance | undefined) => (i ? occ.get(occKey(t.id, i.key)) : undefined);
 
   const daily: TodayItem[] = [];
@@ -256,6 +258,12 @@ export function buildToday(input: TodayInput): TodayView {
     } else if (last && (missed(last) || completedOn(lastOcc) === T) && !(cur && curOcc?.status === 'done')) {
       const done = lastOcc?.status === 'done';
       row = { task, inst: last, done, priority: !done, planned: lastOcc?.plannedFor === T, tag: null };
+    }
+
+    const p = plannedToday.get(task.id);
+    if (!row && p && p.status !== 'deferred' && (p.status !== 'done' || completedOn(p) === T)) {
+      const inst: Instance = { key: p.periodStart, start: p.periodStart, end: p.periodEnd, due: p.dueDate ?? null };
+      row = { task, inst, done: p.status === 'done', priority: false, planned: true, tag: null };
     }
 
     if (row) {

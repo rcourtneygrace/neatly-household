@@ -69,3 +69,52 @@
   margin-top: 0;
   margin-bottom: 6px;
 }
+
+/* ---------- Suggested change from Analysis (Figma 16:2510) ---------- */
+.suggested-change {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 13px 15px;
+  border: 1px solid var(--clay-border-light);
+  border-radius: 12px;
+  background: var(--clay-bg-light);
+}
+.suggested-change__kicker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-kicker);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--clay-text);
+}
+.suggested-change__pills {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--clay-text);
+}
+.suggested-change__from,
+.suggested-change__to {
+  padding: 4px 14px;
+  border-radius: 999px;
+  font-size: var(--fs-body-14);
+}
+.suggested-change__from {
+  border: 1px solid var(--clay-border-soft);
+  background: var(--surface-white);
+  color: var(--text-ink);
+}
+.suggested-change__to {
+  background: var(--brand-teal);
+  color: var(--surface-white);
+  font-weight: 600;
+}
+.suggested-change__why {
+  font-size: var(--fs-caption);
+  line-height: 1.45;
+  color: var(--clay-deep);
+}

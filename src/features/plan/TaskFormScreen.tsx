@@ -52,12 +52,17 @@ function TaskForm({ existing, departments, household }: { existing?: Task; depar
   const seasons = household.seasonStartDates;
 
   const initialCadence = (CADENCES.includes(params.get('cadence') as Cadence) ? params.get('cadence') : 'weekly') as Cadence;
+  // Opened from an Analysis suggestion ("Make it monthly" / "Change how often")
+  const suggest = existing && CADENCES.includes(params.get('suggest') as Cadence) ? (params.get('suggest') as Cadence) : null;
+  const why = params.get('why');
   const [name, setName] = useState(existing?.name ?? '');
   const [departmentId, setDepartmentId] = useState(existing?.departmentId ?? departments[0]?.id ?? '');
   const [timing, setTiming] = useState<Timing>(() =>
-    existing
-      ? { cadence: existing.cadence, timingMode: existing.timingMode, timingValue: existing.timingValue }
-      : defaultTiming(initialCadence, 'specific', today, seasons),
+    suggest
+      ? defaultTiming(suggest, 'every', today, seasons)
+      : existing
+        ? { cadence: existing.cadence, timingMode: existing.timingMode, timingValue: existing.timingValue }
+        : defaultTiming(initialCadence, 'specific', today, seasons),
   );
   const [notes, setNotes] = useState(existing?.notes ?? '');
   const [paused, setPaused] = useState(existing?.paused ?? false);
@@ -110,6 +115,26 @@ function TaskForm({ existing, departments, household }: { existing?: Task; depar
       >
         <div className="sheet__handle" aria-hidden />
         <h1 className="sheet__title">{existing ? 'Edit task' : 'Add task'}</h1>
+
+        {suggest && existing && (
+          <div className="suggested-change">
+            <p className="suggested-change__kicker">
+              <Icon name="leaf" size={16} />
+              Suggested change
+            </p>
+            <p className="suggested-change__pills">
+              <span className="suggested-change__from">{CADENCE_LABEL[existing.cadence]}</span>
+              <span aria-label="to">→</span>
+              <span className="suggested-change__to">{CADENCE_LABEL[suggest]}</span>
+            </p>
+            <p className="suggested-change__why">
+              {why === 'setAside' ? 'It was often set aside this season.' : 'It was often running late this season.'} A{' '}
+              {CADENCE_LABEL[suggest].toLowerCase()} rhythm gives it more room and eases your{' '}
+              {{ daily: 'day', weekly: 'week', monthly: 'month', seasonal: 'season', yearly: 'year' }[existing.cadence]}. Your
+              history stays as it is.
+            </p>
+          </div>
+        )}
 
         <label className="field">
           <span className="field__label">Task name</span>
