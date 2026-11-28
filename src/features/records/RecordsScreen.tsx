@@ -3,7 +3,6 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { CallButton, Icon, PageHeader, PrimaryButton, SectionHeader } from '../../ui';
 import { ShowDropdown } from '../../ui/ShowDropdown';
 import { useObjectUrl } from '../../ui/useObjectUrl';
-import { useHousehold } from '../../data/hooks';
 import { useFirstThumbs, useRecords } from '../../data/records';
 import type { RecordEntry } from '../../data/types';
 import { countLabel, groupByCategory, LIST_CATEGORIES, matchesSearch, phoneOf, summaryOf } from '../../domain/records';
@@ -12,7 +11,6 @@ import './records.css';
 const ALL = 'all';
 
 export function RecordsScreen() {
-  const household = useHousehold();
   const records = useRecords();
   const thumbs = useFirstThumbs(records);
   const navigate = useNavigate();
@@ -44,7 +42,7 @@ export function RecordsScreen() {
 
   return (
     <main className="screen records-screen">
-      <PageHeader title="Records" householdName={household?.name} />
+      <PageHeader title="Records" />
 
       <div className="screen__body records-controls">
         <label className="search-field">

@@ -55,7 +55,7 @@ function Analysis({ data, T }: { data: AnalysisData; T: Day }) {
 
   return (
     <main className="screen analysis">
-      <PageHeader title="Analysis" householdName={data.household.name} subtitle="A calm look at how your home is running" />
+      <PageHeader title="Analysis" subtitle="A calm look at how your home is running" />
 
       <div className="screen__body">
         <div className="segmented an-range" role="radiogroup" aria-label="Look back over">

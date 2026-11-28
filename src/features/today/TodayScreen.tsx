@@ -332,9 +332,10 @@ function TodayHeader({ name, now, T, onSettings }: { name: string; now: Date; T:
     <header>
       <Wordmark />
       <div className="today-header">
-        <span className="today-header__avatar" aria-hidden>
+        {/* The household's tile opens Settings, like a profile picture in other apps */}
+        <button type="button" className="today-header__avatar" onClick={onSettings} aria-label={`Settings for ${name}`}>
           {name.trim().charAt(0).toUpperCase()}
-        </span>
+        </button>
         <h1 className="today-header__name">{name}</h1>
         <button type="button" className="today-header__settings" onClick={onSettings}>
           <Icon name="sliders" size={20} label="Settings" />

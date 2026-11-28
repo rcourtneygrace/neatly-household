@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Icon, PageHeader, PrimaryButton } from '../../ui';
 import { ShowDropdown } from '../../ui/ShowDropdown';
-import { useHousehold } from '../../data/hooks';
 import { useDepartments, useRoutines, useTasks } from '../../data/tasks';
 import { loadSuggestedTasks } from '../../data/suggestedTasks';
 import type { Cadence, Task } from '../../data/types';
@@ -13,7 +12,6 @@ type Filter = 'all' | Cadence;
 
 /** Plan overview (Figma 16:2341, Weekly filter 16:2861). */
 export function PlanScreen() {
-  const household = useHousehold();
   const tasks = useTasks();
   const departments = useDepartments();
   const routines = useRoutines();
@@ -44,7 +42,7 @@ export function PlanScreen() {
 
   return (
     <main className="screen plan-screen">
-      <PageHeader title="Plan" householdName={household?.name} />
+      <PageHeader title="Plan" />
 
       <div className="screen__body plan-routines">
         <RoutineCard type="opening" steps={routines?.opening?.steps.length ?? 0} />
