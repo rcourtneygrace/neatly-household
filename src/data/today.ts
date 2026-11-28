@@ -2,7 +2,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { dayLogId, db, nowISO, occurrenceId, stamp } from './db';
 import type { DayLog, Department, Household, Occurrence, RoutineTemplate, Task, VacationPeriod } from './types';
 import { addDays, type Day } from '../domain/dates';
-import type { Instance, TodayItem } from '../domain/schedule';
+import type { Instance, TodayItem, VacationSpan } from '../domain/schedule';
+import { holidaysOf, offDaySpans } from '../domain/holidays';
 
 export interface TodayData {
   household: Household;
@@ -12,6 +13,8 @@ export interface TodayData {
   dayLogs: DayLog[];
   routines: { opening?: RoutineTemplate; closing?: RoutineTemplate };
   vacations: VacationPeriod[];
+  /** Vacations, days off and chosen holidays: when nothing counts */
+  offDays: VacationSpan[];
 }
 
 /** Everything the Today screen needs, kept live. Occurrences from the last ~13 months are enough for any carry-over. */
@@ -24,18 +27,25 @@ export function useTodayData(today: Day): TodayData | undefined {
       db.departments.orderBy('order').toArray(),
       db.occurrences.where('periodStart').aboveOrEqual(addDays(today, -400)).toArray(),
       // ~2 months of day logs: Build Your Day ranks by what was picked before
-      db.dayLogs.where('date').aboveOrEqual(addDays(today, -60)).toArray(),
+      db.dayLogs.where('date').aboveOrEqual(addDays(today, -400)).toArray(),
       db.routines.toArray(),
       db.vacations.toArray(),
     ]);
+    const liveVacations = vacations.filter((v) => !v.deletedAt);
     return {
       household,
+      offDays: offDaySpans({
+        today,
+        vacations: liveVacations,
+        holidays: holidaysOf(household),
+        workdays: new Set(dayLogs.filter((l) => l.workday).map((l) => l.date)),
+      }),
       tasks: tasks.filter((t) => !t.deletedAt && !t.archived),
       departments,
       occurrences: occurrences.filter((o) => !o.deletedAt),
       dayLogs,
       routines: { opening: routines.find((r) => r.type === 'opening'), closing: routines.find((r) => r.type === 'closing') },
-      vacations: vacations.filter((v) => !v.deletedAt),
+      vacations: liveVacations,
     };
   }, [today]);
 }
@@ -191,6 +201,41 @@ export async function startVacation(today: Day): Promise<void> {
 export async function endVacation(today: Day): Promise<void> {
   const open = (await db.vacations.toArray()).filter((v) => !v.deletedAt && v.endDate === null);
   for (const v of open) await db.vacations.update(v.id, { endDate: today, updatedAt: nowISO() });
+}
+
+/* ---------- Days off ---------- */
+
+/** Take a day off: nothing counts that day, and it ends by itself at the next opening. */
+export async function takeDayOff(day: Day, label: string | null = null): Promise<void> {
+  await db.transaction('rw', db.vacations, db.dayLogs, async () => {
+    // A yearly holiday someone had chosen to work becomes a day off again
+    const log = await db.dayLogs.where('date').equals(day).first();
+    if (log?.workday) await db.dayLogs.update(log.id, { workday: false, updatedAt: nowISO() });
+    const existing = (await db.vacations.toArray()).find(
+      (v) => !v.deletedAt && v.kind === 'dayOff' && v.startDate === day,
+    );
+    if (existing) {
+      if (label !== null) await db.vacations.update(existing.id, { label, updatedAt: nowISO() });
+      return;
+    }
+    await db.vacations.add(stamp({ kind: 'dayOff' as const, label, startDate: day, endDate: day, welcomeSeen: true }));
+  });
+}
+
+/** "Back to work": the day counts again. A yearly holiday is kept off in later years. */
+export async function cancelDayOff(day: Day, isHoliday: boolean): Promise<void> {
+  await db.transaction('rw', db.vacations, db.dayLogs, async () => {
+    const now = nowISO();
+    for (const v of await db.vacations.toArray()) {
+      if (!v.deletedAt && v.kind === 'dayOff' && v.startDate <= day && day <= (v.endDate ?? v.startDate)) {
+        await db.vacations.update(v.id, { deletedAt: now, updatedAt: now });
+      }
+    }
+    if (isHoliday) {
+      const log = await dayLog(day);
+      await db.dayLogs.update(log.id, { workday: true, updatedAt: now });
+    }
+  });
 }
 
 export async function dismissWelcomeBack(id: string): Promise<void> {

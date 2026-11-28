@@ -89,3 +89,12 @@ All data stays on the phone (IndexedDB). Every row has `id/createdAt/updatedAt/d
 A day runs from its opening time to the next opening time (`src/domain/hours.ts`), not midnight to midnight.
 Before the open time it is still the evening before: its Closing stays up, and check-offs count for it
 (`Occurrence.completedOn`). "Open early" (`DayLog.startedEarly`) starts the new day before its open time.
+
+## Days off
+
+- A day off is a one-day `VacationPeriod` with `kind: 'dayOff'` (and an optional `label`); yearly holidays
+  come from `Household.holidays` (`src/domain/holidays.ts`, default New Year's Day, Thanksgiving, Christmas).
+  `offDaySpans` merges vacations, days off and holidays; every rule that respects vacations respects them.
+- A task due on a day off moves to the next day that is not one (`windowEnd`), as a normal task.
+- "Back to work" deletes a one-off day off, or sets `DayLog.workday` for a holiday (that date only).
+- Days off can be marked up to 7 days back (Settings → Days off).

@@ -72,3 +72,55 @@
   line-height: 1.4;
   color: var(--text-ink);
 }
+
+/* Days off */
+.days-off {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding-top: 8px;
+}
+.days-off__add {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.days-off__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.days-off__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 56px;
+  padding: 4px 4px 4px 15px;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--surface-white);
+}
+.days-off__text {
+  display: flex;
+  flex-direction: column;
+}
+.days-off__date {
+  font-size: var(--fs-body-15);
+  font-weight: 600;
+  color: var(--text-ink);
+}
+.days-off__label {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+.days-off__remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tap);
+  height: var(--tap);
+  color: var(--text-muted);
+}

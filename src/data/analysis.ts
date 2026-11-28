@@ -5,6 +5,7 @@ import type { Department, Household, Task } from './types';
 import { addDays, type Day } from '../domain/dates';
 import { buildToday, instancesAround, type Instance, type PlanCalendar } from '../domain/schedule';
 import type { AnalysisInput } from '../domain/analysis';
+import { holidaysOf, offDaySpans } from '../domain/holidays';
 
 /** Tasks, occurrences and day logs from the last ~13 months, kept live. */
 export interface AnalysisData extends AnalysisInput {
@@ -24,6 +25,7 @@ export function useAnalysisData(today: Day): AnalysisData | undefined {
       db.dayLogs.where('date').aboveOrEqual(from).toArray(),
       db.vacations.toArray(),
     ]);
+    const liveVacations = vacations.filter((v) => !v.deletedAt);
     return {
       today,
       household,
@@ -32,7 +34,13 @@ export function useAnalysisData(today: Day): AnalysisData | undefined {
       departments,
       occurrences: occurrences.filter((o) => !o.deletedAt),
       dayLogs,
-      vacations: vacations.filter((v) => !v.deletedAt),
+      // Vacations, days off and chosen holidays are all left out of the numbers
+      vacations: offDaySpans({
+        today,
+        vacations: liveVacations,
+        holidays: holidaysOf(household),
+        workdays: new Set(dayLogs.filter((l) => l.workday).map((l) => l.date)),
+      }),
     };
   }, [today]);
 }

@@ -193,6 +193,10 @@ export interface TodayView {
 export interface VacationSpan {
   startDate: Day;
   endDate: Day | null;
+  /** "dayOff": a single day off (a holiday, a sick day). Missing means vacation. */
+  kind?: 'vacation' | 'dayOff';
+  /** A day off's name, such as "Thanksgiving" */
+  label?: string | null;
 }
 
 export interface TodayInput {
@@ -226,6 +230,26 @@ export function doneDay(o: Occurrence): Day {
 
 export function inVacation(day: Day, vacations: VacationSpan[] | undefined, today: Day): boolean {
   return !!vacations?.some((v) => v.startDate <= day && day <= (v.endDate ?? today));
+}
+
+/** The day off covering `day`, if any (vacations don't count here). */
+export function dayOffOn(day: Day, spans: VacationSpan[] | undefined): VacationSpan | undefined {
+  return spans?.find((v) => v.kind === 'dayOff' && v.startDate <= day && day <= (v.endDate ?? v.startDate));
+}
+
+/** The first day from `day` on that is not a day off. */
+export function nextWorkday(day: Day, spans: VacationSpan[] | undefined): Day {
+  let d = day;
+  for (let i = 0; i < 31 && dayOffOn(d, spans); i++) d = addDays(d, 1);
+  return d;
+}
+
+/**
+ * The last day of an instance's window. A task due on a day off moves to the next day that is
+ * not one: it shows there as a normal task, and is only late after that.
+ */
+export function windowEnd(inst: Instance, spans: VacationSpan[] | undefined): Day {
+  return inst.due && dayOffOn(inst.due, spans) ? nextWorkday(inst.due, spans) : inst.end;
 }
 
 function vacationBetween(from: Day, to: Day, vacations: VacationSpan[] | undefined, today: Day): boolean {
@@ -293,12 +317,15 @@ export function buildToday(input: TodayInput): TodayView {
     const last = [...insts].reverse().find((i) => i.end < T);
     const next = insts.find((i) => i.start > T);
     const missed = (i: Instance | undefined) => {
-      if (!i || i.end < since || inVacation(i.end, vacations, T)) return false;
+      if (!i || i.end < since) return false;
+      const end = windowEnd(i, vacations);
+      if (end >= T || inVacation(end, vacations, T)) return false;
       const o = get(task, i);
       if (o?.pinned) return false; // a pushed day is never carried over
       return o?.status !== 'done' && o?.status !== 'deferred';
     };
     const curOcc = get(task, cur);
+    const lastOcc = get(task, last);
 
     let row: TodayItem | null = null;
     const doneToday = own.find((o) => completedOn(o) === T);
@@ -322,6 +349,16 @@ export function buildToday(input: TodayInput): TodayView {
       row = { task, inst: occInstance(pinnedToday), kind: 'locked', done: false, planned: false, priority: false, tag: null };
     } else if (cur?.due === T && curOcc?.status !== 'deferred' && curOcc?.status !== 'done') {
       row = { task, inst: cur, kind: 'locked', done: false, planned: false, priority: false, tag: null };
+    } else if (
+      // Due on a day off: moved to today as a normal task
+      last?.due &&
+      last.due < T &&
+      windowEnd(last, vacations) === T &&
+      lastOcc?.status !== 'done' &&
+      lastOcc?.status !== 'deferred' &&
+      !lastOcc?.pinned
+    ) {
+      row = { task, inst: last, kind: 'locked', done: false, planned: false, priority: false, tag: null };
     } else if (pickedToday) {
       const inst = occInstance(pickedToday);
       const isLast = last && inst.key === last.key;

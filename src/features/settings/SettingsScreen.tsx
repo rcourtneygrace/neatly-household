@@ -75,6 +75,14 @@ export function SettingsScreen() {
       </section>
 
       <section className="settings__group">
+        <Link to="/settings/days-off" className="link-field">
+          <span>Days off</span>
+          <Icon name="chevron-right" size={18} />
+        </Link>
+        <p className="settings__hint">Holidays and single days when nothing counts.</p>
+      </section>
+
+      <section className="settings__group">
         <Link to="/settings/plan" className="link-field">
           <span>Plan settings</span>
           <Icon name="chevron-right" size={18} />

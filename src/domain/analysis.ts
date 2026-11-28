@@ -1,6 +1,6 @@
 import type { Cadence, DayLog, Department, Occurrence, Task } from '../data/types';
 import { addDays, fromDay, toDay, weekdayOf, type Day } from './dates';
-import { doneDay, inVacation, instancesAround, occKey, periodFor, type Instance, type PlanCalendar, type VacationSpan } from './schedule';
+import { doneDay, inVacation, instancesAround, windowEnd, occKey, periodFor, type Instance, type PlanCalendar, type VacationSpan } from './schedule';
 import { CADENCE_LABEL, WEEKDAYS } from './tasks';
 
 /**
@@ -68,14 +68,16 @@ export function judge(
   vacations?: VacationSpan[],
 ): Outcome {
   if (inst.end < since(task)) return 'skip';
-  if (occ?.status !== 'done' && inVacation(inst.end, vacations, today)) return 'skip';
+  // Due on a day off: judged by the day it moved to
+  const end = windowEnd(inst, vacations);
+  if (occ?.status !== 'done' && inVacation(end, vacations, today)) return 'skip';
   if (occ?.status === 'deferred') return 'deferred';
   if (occ?.status === 'done') {
-    const on = occ.completedAt ? doneDay(occ) : inst.end;
-    return on <= inst.end ? 'onTime' : 'late';
+    const on = occ.completedAt ? doneDay(occ) : end;
+    return on <= end ? 'onTime' : 'late';
   }
   if (occ?.status === 'carriedOver') return 'late';
-  if (inst.end >= today) return 'open';
+  if (end >= today) return 'open';
   if (task.cadence === 'daily' && !openedDays.has(inst.key)) return 'skip';
   return 'missed';
 }

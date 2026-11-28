@@ -12,6 +12,8 @@ import {
   reopenDay,
   setDone,
   skipItem,
+  takeDayOff,
+  cancelDayOff,
   startDayEarly,
   undo,
   useTodayData,
@@ -21,8 +23,9 @@ import {
 import type { RoutineTemplate } from '../../data/types';
 import { useHouseholdDay } from '../../data/day';
 import { closingTime, hoursOn } from '../../domain/hours';
+import { holidayOn, holidaysOf } from '../../domain/holidays';
 import { addDays, clockTime, fromDay, hhmmLabel, longDate, toDay, type Day } from '../../domain/dates';
-import { buildToday, inVacation, plainMeta, type TodayItem, type TodayView } from '../../domain/schedule';
+import { buildToday, dayOffOn, plainMeta, type TodayItem, type TodayView } from '../../domain/schedule';
 import { BuildYourDay } from './BuildYourDay';
 import { SkipSheet, TaskActionsSheet } from './TaskActionsSheet';
 import { MetaLine, TagPill } from './rows';
@@ -59,9 +62,9 @@ function useTodayView(data: TodayData, T: Day): { view: TodayView; openedDays: S
         cal: household,
         clearWhenChecked: household.clearWhenChecked,
         openedDays,
-        vacations: data.vacations,
+        vacations: data.offDays,
       }),
-    [T, data.tasks, data.occurrences, household, openedDays, data.vacations],
+    [T, data.tasks, data.occurrences, household, openedDays, data.offDays],
   );
   return { view, openedDays };
 }
@@ -82,7 +85,8 @@ function Today({ data, now, T }: { data: TodayData; now: Date; T: Day }) {
   const closed = log?.closingStatus === 'done';
   // Closing: from an hour before close until the next opening
   const showClosing = closingTime(now, T, household.businessHours);
-  const away = inVacation(T, data.vacations, T) && data.vacations.some((v) => v.endDate === null);
+  const away = data.vacations.some((v) => v.kind !== 'dayOff' && v.endDate === null && v.startDate <= T);
+  const dayOff = !away ? dayOffOn(T, data.offDays) : undefined;
   const welcome = !away ? data.vacations.find((v) => v.endDate !== null && !v.welcomeSeen) : undefined;
 
   const onMarkOpening = async () => {
@@ -98,6 +102,31 @@ function Today({ data, now, T }: { data: TodayData; now: Date; T: Day }) {
     const snap = await skipItem(item, reason);
     setToast({ text: `Skipped ${item.task.name}.`, snap });
   };
+
+  if (dayOff) {
+    const holiday = holidayOn(T, holidaysOf(household));
+    return (
+      <main className="screen today">
+        <TodayHeader name={household.name} now={now} T={T} onSettings={() => navigate('/settings')} />
+        <div className="today__body">
+          <section className="away-card" aria-labelledby="day-off-title">
+            <span className="closed-hero__badge" aria-hidden>
+              <Icon name="leaf" size={24} />
+            </span>
+            <h2 id="day-off-title" className="closed-hero__title">
+              {dayOff.label ? `${dayOff.label} · Day off` : 'Day off'}
+            </h2>
+            <p className="closed-hero__sub">
+              Nothing counts today. Anything due today moves to your next day back.
+            </p>
+            <button type="button" className="outline-button outline-button--wide" onClick={() => cancelDayOff(T, !!holiday)}>
+              Back to work
+            </button>
+          </section>
+        </div>
+      </main>
+    );
+  }
 
   if (away) {
     return (
@@ -141,7 +170,12 @@ function Today({ data, now, T }: { data: TodayData; now: Date; T: Day }) {
       ) : (
         <div className="today__body">
           {!opened && !showClosing && (
-            <RoutineCard routine={data.routines.opening} type="opening" onComplete={onMarkOpening} />
+            <>
+              <RoutineCard routine={data.routines.opening} type="opening" onComplete={onMarkOpening} />
+              <button type="button" className="today__day-off" onClick={() => takeDayOff(T)}>
+                Take today off
+              </button>
+            </>
           )}
           {opened && <OpenedBanner at={log?.openingAt} />}
           {showClosing && <RoutineCard routine={data.routines.closing} type="closing" onComplete={onMarkClosing} />}
@@ -494,7 +528,7 @@ function ClosedView({
     cal: data.household,
     clearWhenChecked: true,
     openedDays: new Set([...openedDays, T]),
-    vacations: data.vacations,
+    vacations: data.offDays,
   });
   const priorityTomorrow = [...next.inProgress, ...next.offers].filter((i) => i.priority).length;
   const carryPriority = carry.filter((i) => i.priority).length;

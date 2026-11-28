@@ -5,6 +5,7 @@ import { PlanScreen } from './features/plan/PlanScreen';
 import { TaskFormScreen } from './features/plan/TaskFormScreen';
 import { RoutineEditScreen } from './features/plan/RoutineEditScreen';
 import { PlanSettingsScreen } from './features/settings/PlanSettingsScreen';
+import { DaysOffScreen } from './features/settings/DaysOffScreen';
 import { JoinScreen } from './features/settings/JoinScreen';
 import { SeasonsScreen } from './features/settings/SeasonsScreen';
 import { RecordsScreen } from './features/records/RecordsScreen';
@@ -52,6 +53,7 @@ const router = createHashRouter([
   { path: '/settings/plan', element: <PlanSettingsScreen /> },
   { path: '/settings/plan/seasons', element: <SeasonsScreen /> },
   { path: '/join/:key', element: <JoinScreen /> },
+  { path: '/settings/days-off', element: <DaysOffScreen /> },
   { path: '*', element: <Navigate to="/today" replace /> },
 ]);
 

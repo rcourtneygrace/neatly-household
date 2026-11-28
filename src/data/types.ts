@@ -39,6 +39,8 @@ export interface Household extends SyncFields {
   accent: string;
   unlocked: boolean; // paid unlock, not used until public release
   businessHours: BusinessHours;
+  /** Holidays taken off every year (ids from domain/holidays). Missing: the defaults. */
+  holidays?: string[];
 }
 
 export interface Department extends SyncFields {
@@ -116,9 +118,15 @@ export interface DayLog extends SyncFields {
   picks?: { taskId: ID; kind: 'locked' | 'chosen' }[];
   /** "Open early": this day started before its opening time */
   startedEarly?: boolean;
+  /** A yearly holiday someone chose to work ("Back to work") */
+  workday?: boolean;
 }
 
 export interface VacationPeriod extends SyncFields {
+  /** "dayOff": one day off (startDate = endDate), ends by itself. Missing means vacation mode. */
+  kind?: 'vacation' | 'dayOff';
+  /** A day off's name, such as "Thanksgiving" */
+  label?: string | null;
   startDate: ISODate;
   /** null while vacation mode is on */
   endDate: ISODate | null;

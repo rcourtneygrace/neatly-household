@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './db';
 import { ensureSeeded } from './seed';
 import { saveTask } from './tasks';
-import { completeClosing, completeOpening, endVacation, planForToday, pushTo, reopenDay, setDone, skipItem, startVacation, undo } from './today';
+import { cancelDayOff, completeClosing, completeOpening, endVacation, takeDayOff, planForToday, pushTo, reopenDay, setDone, skipItem, startVacation, undo } from './today';
 import type { TodayItem } from '../domain/schedule';
 
 let item: TodayItem;
@@ -95,5 +95,22 @@ describe('Today actions', () => {
     expect(logs[0]).toMatchObject({ openingStatus: 'done', closingStatus: 'done', tasksPlanned: 5, tasksCompleted: 3 });
     await reopenDay('2026-10-15');
     expect((await db.dayLogs.toArray())[0].closingStatus).toBe('open');
+  });
+
+  it('a day off is one day, ends by itself, and Back to work cancels it', async () => {
+    await takeDayOff('2026-11-26', 'Thanksgiving');
+    await takeDayOff('2026-11-26'); // already off: no second row
+    const v = (await db.vacations.toArray()).filter((x) => !x.deletedAt);
+    expect(v).toHaveLength(1);
+    expect(v[0]).toMatchObject({ kind: 'dayOff', startDate: '2026-11-26', endDate: '2026-11-26', label: 'Thanksgiving' });
+    await cancelDayOff('2026-11-26', false);
+    expect((await db.vacations.toArray()).filter((x) => !x.deletedAt)).toHaveLength(0);
+  });
+
+  it('working a yearly holiday is remembered for that date only', async () => {
+    await cancelDayOff('2026-12-25', true);
+    expect((await db.dayLogs.where('date').equals('2026-12-25').first())?.workday).toBe(true);
+    await takeDayOff('2026-12-25');
+    expect((await db.dayLogs.where('date').equals('2026-12-25').first())?.workday).toBe(false);
   });
 });
