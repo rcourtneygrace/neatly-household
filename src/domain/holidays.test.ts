@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HOLIDAYS, offDaySpans } from './holidays';
+import { HOLIDAYS, dayOffMessage, holidayOn, offDaySpans, ownHoliday, yearlyHolidays } from './holidays';
 import { buildToday, dayOffOn, nextWorkday, windowEnd } from './schedule';
 import { judge } from './analysis';
 import type { Occurrence, Task } from '../data/types';
@@ -18,10 +18,24 @@ describe('holidays', () => {
   });
 
   it('builds day-off spans, leaving out holidays someone chose to work', () => {
-    const spans = offDaySpans({ today: '2026-11-27', vacations: [], holidays: ['thanksgiving', 'christmas'], workdays: new Set(['2026-12-25']) });
+    const spans = offDaySpans({ today: '2026-11-27', vacations: [], holidays: HOLIDAYS.filter((h) => ['thanksgiving', 'christmas'].includes(h.id)), workdays: new Set(['2026-12-25']) });
     expect(dayOffOn('2026-11-26', spans)?.label).toBe('Thanksgiving');
     expect(dayOffOn('2026-12-25', spans)).toBeUndefined();
     expect(nextWorkday('2026-11-26', spans)).toBe('2026-11-27');
+  });
+
+  it("includes the household's own yearly days", () => {
+    const list = yearlyHolidays({ holidays: ['christmas'], yearlyDays: [{ id: 'a', name: "Mia's birthday", month: 2, day: 14 }] });
+    expect(holidayOn('2027-03-14', list)?.name).toBe("Mia's birthday");
+    expect(holidayOn('2026-12-25', list)?.name).toBe('Christmas Day');
+    expect(ownHoliday({ id: 'b', name: 'Leap', month: 1, day: 29 }).on(2027)).toBe('2027-02-28');
+  });
+
+  it('says what kind of day off it is', () => {
+    expect(dayOffMessage('My birthday', true)).toBe('Today is your birthday, enjoy your day off.');
+    expect(dayOffMessage("Mia's birthday", true)).toBe("Today is Mia's birthday, enjoy your day off.");
+    expect(dayOffMessage('Sick day', false)).toBe('Rest up and feel better.');
+    expect(dayOffMessage(null, false)).toBe('Enjoy your day off.');
   });
 });
 

@@ -47,6 +47,7 @@ export function RowButton({
   onClick,
   tone,
   disabled,
+  chevron,
 }: {
   icon: string;
   title: string;
@@ -54,10 +55,13 @@ export function RowButton({
   onClick: () => void;
   tone?: 'clay';
   disabled?: boolean;
+  /** Opens something (a sheet), like a link row */
+  chevron?: boolean;
 }) {
   return (
     <button type="button" className="set-row" onClick={onClick} disabled={disabled}>
       <Body icon={icon} title={title} detail={detail} tone={tone} />
+      {chevron && <Icon name="chevron-right" size={18} className="set-row__chevron" />}
     </button>
   );
 }

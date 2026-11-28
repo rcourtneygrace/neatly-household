@@ -3,7 +3,7 @@ import { dayLogId, db, nowISO, occurrenceId, stamp } from './db';
 import type { DayLog, Department, Household, Occurrence, RoutineTemplate, Task, VacationPeriod } from './types';
 import { addDays, type Day } from '../domain/dates';
 import type { Instance, TodayItem, VacationSpan } from '../domain/schedule';
-import { holidaysOf, offDaySpans } from '../domain/holidays';
+import { offDaySpans, yearlyHolidays } from '../domain/holidays';
 
 export interface TodayData {
   household: Household;
@@ -37,7 +37,7 @@ export function useTodayData(today: Day): TodayData | undefined {
       offDays: offDaySpans({
         today,
         vacations: liveVacations,
-        holidays: holidaysOf(household),
+        holidays: yearlyHolidays(household),
         workdays: new Set(dayLogs.filter((l) => l.workday).map((l) => l.date)),
       }),
       tasks: tasks.filter((t) => !t.deletedAt && !t.archived),

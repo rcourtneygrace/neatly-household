@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Sheet } from '../../ui/BottomSheet';
-import { startVacation } from '../../data/today';
+import { endVacation, startVacation } from '../../data/today';
 import type { VacationPeriod } from '../../data/types';
 import { addDays, daysBetween, weekdayDate, type Day } from '../../domain/dates';
 import '../records/record-form.css';
@@ -13,8 +13,8 @@ const QUICK = [
 ];
 
 /**
- * "How long is your vacation?": when you leave and when you're back. Vacation mode turns off by
- * itself on the day you're back. "Not sure yet" keeps it on until you turn it off.
+ * "Plan a vacation": when you leave and when you're back. It ends by itself on the day you're
+ * back; "Not sure yet" lasts until "I'm back".
  */
 export function VacationSheet({
   open,
@@ -51,9 +51,11 @@ function VacationForm({ today, existing, onClose }: { today: Day; existing?: Vac
   return (
     <>
       <h2 id="vacation-title" className="task-sheet__title">
-        How long is your vacation?
+        {started ? 'You\u2019re on vacation' : existing ? 'Your vacation' : 'Plan a vacation'}
       </h2>
-      <p className="task-sheet__meta">Nothing counts while you&rsquo;re away. Vacation mode turns off by itself when you&rsquo;re back.</p>
+      <p className="task-sheet__meta">
+        Nothing counts while you&rsquo;re away. Neatly picks back up on the day you&rsquo;re back.
+      </p>
 
       <div className="vac-form">
         <div className="vac-form__dates">
@@ -111,7 +113,7 @@ function VacationForm({ today, existing, onClose }: { today: Day; existing?: Vac
 
         <p className="vac-form__summary" role="status">
           {notSure
-            ? 'Vacation mode stays on until you turn it off.'
+            ? 'Neatly waits until you tap I\u2019m back.'
             : !valid
               ? 'Pick a day after you leave.'
               : `${away} ${away === 1 ? 'day' : 'days'} away. Back on ${weekdayDate(back)}.`}
@@ -119,10 +121,22 @@ function VacationForm({ today, existing, onClose }: { today: Day; existing?: Vac
       </div>
 
       <button type="button" className="save-button vac-form__save" disabled={!valid} onClick={save}>
-        {existing ? 'Save' : leaving === today ? 'Turn on vacation mode' : 'Plan vacation'}
+        {existing ? 'Save' : leaving === today ? 'Start vacation' : 'Plan vacation'}
       </button>
+      {existing && (
+        <button
+          type="button"
+          className="task-sheet__quiet task-sheet__quiet--clay"
+          onClick={async () => {
+            await endVacation(today);
+            onClose();
+          }}
+        >
+          {started ? 'I\u2019m back early' : 'Cancel this vacation'}
+        </button>
+      )}
       <button type="button" className="task-sheet__quiet" onClick={onClose}>
-        Cancel
+        Close
       </button>
     </>
   );

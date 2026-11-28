@@ -5,17 +5,18 @@ import { Icon } from '../../ui';
 import { ActionSheet } from '../../ui/ActionSheet';
 import { useNow } from '../../ui/useNow';
 import { updateHousehold, useHousehold } from '../../data/hooks';
-import { cancelDayOff, currentOrNextVacation, endVacation, takeDayOff } from '../../data/today';
+import { currentOrNextVacation } from '../../data/today';
 import { db } from '../../data/db';
 import { useHouseholdDay } from '../../data/day';
 import { addDays, hhmmLabel, toDay, weekdayDate } from '../../domain/dates';
-import { holidayOn, holidaysOf, offDaySpans } from '../../domain/holidays';
+import { holidayOn, offDaySpans, yearlyHolidays } from '../../domain/holidays';
 import { dayOffOn } from '../../domain/schedule';
 import { exportBackup, importBackup, shareOrDownload } from '../../data/backup';
 import { loadSampleRecords } from '../../data/sampleRecords';
 import { loadSuggestedTasks } from '../../data/suggestedTasks';
 import { SharingSection, TellSomeoneSection } from './SharingSection';
-import { Group, RowButton, RowField, RowLink, RowToggle } from './rows';
+import { Group, RowButton, RowField, RowLink } from './rows';
+import { PlanDaysOffSheet, TakeTodayOffSheet } from './TimeAwaySheets';
 import { VacationSheet } from './VacationSheet';
 import '../records/records.css';
 import '../records/record-form.css';
@@ -35,21 +36,27 @@ export function SettingsScreen() {
   const [status, setStatus] = useState<string>();
   const [pendingImport, setPendingImport] = useState<File | null>(null);
   const [vacationSheet, setVacationSheet] = useState(false);
+  const [todaySheet, setTodaySheet] = useState(false);
+  const [planSheet, setPlanSheet] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const trip = useLiveQuery(async () => currentOrNextVacation(await db.vacations.toArray(), T), [T]);
-  // Today's day off: one marked by hand, or a chosen holiday nobody has set to work
-  const todayOff = useLiveQuery(async () => {
+  // Today's day off (marked, or a yearly day nobody set to work) and the next one coming up
+  const off = useLiveQuery(async () => {
     const h = await db.household.toCollection().first();
+    const yearly = h ? yearlyHolidays(h) : [];
     const vacations = (await db.vacations.toArray()).filter((v) => !v.deletedAt);
     const log = await db.dayLogs.where('date').equals(T).first();
-    const spans = offDaySpans({
-      today: T,
-      vacations,
-      holidays: h ? holidaysOf(h) : [],
-      workdays: new Set(log?.workday ? [T] : []),
-    });
-    return dayOffOn(T, spans) ?? null;
-  }, [T, household?.holidays?.join()]);
+    const spans = offDaySpans({ today: T, vacations, holidays: yearly, workdays: new Set(log?.workday ? [T] : []) });
+    const today = dayOffOn(T, spans);
+    const next = spans
+      .filter((s) => s.kind === 'dayOff' && s.startDate > T)
+      .sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
+    return {
+      today: today ? { label: today.label ?? null, yearly: !!holidayOn(T, yearly) } : null,
+      next: next ?? null,
+      yearlyCount: yearly.length,
+    };
+  }, [T, household?.updatedAt]);
 
   useEffect(() => {
     if (household) setName(household.name);
@@ -65,7 +72,6 @@ export function SettingsScreen() {
   if (!household) return null;
   const onVacation = !!trip && trip.startDate <= T;
   const hours = household.businessHours;
-  const holidays = holidaysOf(household).length;
 
   const saveName = () => {
     const n = name.trim();
@@ -74,11 +80,11 @@ export function SettingsScreen() {
   };
 
   const vacationDetail = !trip
-    ? "Turn on when you're away"
+    ? 'Away for a few days or more'
     : onVacation
       ? trip.endDate
-        ? `On · back ${weekdayDate(addDays(trip.endDate, 1))}`
-        : 'On until you turn it off'
+        ? `Back ${weekdayDate(addDays(trip.endDate, 1))}`
+        : "Until you're back"
       : `Planned ${weekdayDate(trip.startDate)}${trip.endDate ? ` – back ${weekdayDate(addDays(trip.endDate, 1))}` : ''}`;
 
   return (
@@ -112,40 +118,34 @@ export function SettingsScreen() {
         <RowLink icon="sliders" title="Plan settings" detail="Week, month, year and seasons" to="/settings/plan" />
       </Group>
 
-      <Group title="Time away" footer="Nothing counts against you while you're away or on a day off.">
-        <RowToggle
-          icon="suitcase"
-          title="Vacation mode"
-          detail={vacationDetail}
-          checked={onVacation}
-          onChange={(on) => (on ? setVacationSheet(true) : endVacation(T))}
+      <Group title="Time away" footer="Time away never counts against you. Anything due waits for you.">
+        <RowButton
+          icon="sun"
+          title={off?.today ? 'Today is a day off' : 'Take today off'}
+          detail={
+            onVacation ? "You're on vacation" : off?.today ? (off.today.label ?? 'Nothing counts today') : 'Rest without falling behind'
+          }
+          disabled={onVacation}
+          chevron
+          onClick={() => setTodaySheet(true)}
         />
-        {trip && (
-          <RowButton
-            icon="calendar"
-            title={onVacation ? 'Change return date' : 'Change vacation dates'}
-            onClick={() => setVacationSheet(true)}
-          />
-        )}
-        {trip && !onVacation && (
-          <RowButton icon="close" title="Cancel planned vacation" tone="clay" onClick={() => endVacation(T)} />
-        )}
-        {!onVacation && (
-          <RowToggle
-            icon="sun"
-            title="Day off today"
-            detail={todayOff ? `${todayOff.label ? `${todayOff.label} · ` : ''}Nothing counts today` : 'Take today off'}
-            checked={!!todayOff}
-            onChange={(on) =>
-              on ? takeDayOff(T) : cancelDayOff(T, !!holidayOn(T, holidaysOf(household)))
-            }
-          />
-        )}
-        <RowLink
+        <RowButton
           icon="leaf"
-          title="Days off"
-          detail={holidays ? `${holidays} ${holidays === 1 ? 'holiday' : 'holidays'} each year, and single days` : 'Holidays and single days'}
-          to="/settings/days-off"
+          title="Plan days off"
+          detail={
+            off?.next
+              ? `Next: ${off.next.label ? `${off.next.label} · ` : ''}${weekdayDate(off.next.startDate)}`
+              : 'Single days, holidays and birthdays'
+          }
+          chevron
+          onClick={() => setPlanSheet(true)}
+        />
+        <RowButton
+          icon="suitcase"
+          title={onVacation ? 'On vacation' : 'Plan a vacation'}
+          detail={vacationDetail}
+          chevron
+          onClick={() => setVacationSheet(true)}
         />
       </Group>
 
@@ -207,6 +207,8 @@ export function SettingsScreen() {
         </p>
       )}
 
+      <TakeTodayOffSheet open={todaySheet} today={T} off={off?.today ?? null} onClose={() => setTodaySheet(false)} />
+      <PlanDaysOffSheet open={planSheet} today={T} yearlyCount={off?.yearlyCount ?? 0} onClose={() => setPlanSheet(false)} />
       <VacationSheet
         open={vacationSheet}
         today={T}

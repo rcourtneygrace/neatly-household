@@ -59,6 +59,44 @@ export const HOLIDAYS: Holiday[] = [
   { id: 'newYearsEve', name: "New Year's Eve", on: (y) => makeDay(y, 11, 31) },
 ];
 
+/** A day the household added itself ("Mia's birthday"), as a holiday. Feb 29 falls on Feb 28. */
+export function ownHoliday(d: { id: string; name: string; month: number; day: number }): Holiday {
+  return {
+    id: `own:${d.id}`,
+    name: d.name,
+    on: (y) => makeDay(y, d.month, Math.min(d.day, new Date(y, d.month + 1, 0).getDate())),
+  };
+}
+
+/** Every day the household takes off each year: the chosen holidays and its own days. */
+export function yearlyHolidays(household: {
+  holidays?: string[];
+  yearlyDays?: { id: string; name: string; month: number; day: number }[];
+}): Holiday[] {
+  const ids = holidaysOf(household);
+  return [...HOLIDAYS.filter((h) => ids.includes(h.id)), ...(household.yearlyDays ?? []).map(ownHoliday)];
+}
+
+/** The quick reasons for a single day off. */
+export const DAY_OFF_REASONS = [
+  { label: 'Sick day', icon: 'moon', message: 'Rest up and feel better.' },
+  { label: 'Family or friend day', icon: 'people', message: 'Enjoy your time together.' },
+  { label: 'Self-care day', icon: 'sparkle', message: 'Enjoy your self-care day.' },
+] as const;
+
+/** "My birthday" reads as "your birthday" when Neatly says it back. */
+export function yourName(name: string): string {
+  return name.trim().replace(/^my\b/i, 'your');
+}
+
+/** What Today says on a day off. */
+export function dayOffMessage(label: string | null | undefined, isYearly: boolean): string {
+  const reason = DAY_OFF_REASONS.find((r) => r.label === label);
+  if (reason) return reason.message;
+  if (label && isYearly) return `Today is ${yourName(label)}, enjoy your day off.`;
+  return 'Enjoy your day off.';
+}
+
 /** On until the household chooses its own: the three most households take off. */
 export const DEFAULT_HOLIDAYS = ['newYearsDay', 'thanksgiving', 'christmas'];
 
@@ -80,7 +118,7 @@ export function nextDate(h: Holiday, from: Day): Day {
 export function offDaySpans(input: {
   today: Day;
   vacations: { startDate: Day; endDate: Day | null; kind?: 'vacation' | 'dayOff'; label?: string | null }[];
-  holidays: string[];
+  holidays: Holiday[];
   workdays: Set<Day>;
 }): VacationSpan[] {
   const spans: VacationSpan[] = input.vacations.map((v) => ({
@@ -90,8 +128,7 @@ export function offDaySpans(input: {
     label: v.label ?? null,
   }));
   const y = Number(input.today.slice(0, 4));
-  for (const h of HOLIDAYS) {
-    if (!input.holidays.includes(h.id)) continue;
+  for (const h of input.holidays) {
     for (const year of [y - 1, y, y + 1]) {
       const d = h.on(year);
       if (!input.workdays.has(d)) spans.push({ startDate: d, endDate: d, kind: 'dayOff', label: h.name });
@@ -100,8 +137,8 @@ export function offDaySpans(input: {
   return spans;
 }
 
-/** The chosen holiday that falls on `day`, if any. */
-export function holidayOn(day: Day, ids: string[]): Holiday | undefined {
+/** The yearly day off that falls on `day`, if any. */
+export function holidayOn(day: Day, holidays: Holiday[]): Holiday | undefined {
   const y = Number(day.slice(0, 4));
-  return HOLIDAYS.find((h) => ids.includes(h.id) && h.on(y) === day);
+  return holidays.find((h) => h.on(y) === day);
 }

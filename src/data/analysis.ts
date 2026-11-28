@@ -5,7 +5,7 @@ import type { Department, Household, Task } from './types';
 import { addDays, type Day } from '../domain/dates';
 import { buildToday, instancesAround, type Instance, type PlanCalendar } from '../domain/schedule';
 import type { AnalysisInput } from '../domain/analysis';
-import { holidaysOf, offDaySpans } from '../domain/holidays';
+import { offDaySpans, yearlyHolidays } from '../domain/holidays';
 
 /** Tasks, occurrences and day logs from the last ~13 months, kept live. */
 export interface AnalysisData extends AnalysisInput {
@@ -38,7 +38,7 @@ export function useAnalysisData(today: Day): AnalysisData | undefined {
       vacations: offDaySpans({
         today,
         vacations: liveVacations,
-        holidays: holidaysOf(household),
+        holidays: yearlyHolidays(household),
         workdays: new Set(dayLogs.filter((l) => l.workday).map((l) => l.date)),
       }),
     };

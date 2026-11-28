@@ -41,6 +41,16 @@ export interface Household extends SyncFields {
   businessHours: BusinessHours;
   /** Holidays taken off every year (ids from domain/holidays). Missing: the defaults. */
   holidays?: string[];
+  /** The household's own days off every year, such as a birthday */
+  yearlyDays?: YearlyDay[];
+}
+
+export interface YearlyDay {
+  id: string;
+  name: string;
+  /** 0 = January */
+  month: number;
+  day: number;
 }
 
 export interface Department extends SyncFields {

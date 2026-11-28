@@ -22,7 +22,7 @@ import {
 import type { RoutineTemplate } from '../../data/types';
 import { useHouseholdDay } from '../../data/day';
 import { closingTime, hoursOn } from '../../domain/hours';
-import { holidayOn, holidaysOf } from '../../domain/holidays';
+import { dayOffMessage, holidayOn, yearlyHolidays } from '../../domain/holidays';
 import { addDays, clockTime, fromDay, weekdayDate, hhmmLabel, longDate, toDay, type Day } from '../../domain/dates';
 import { buildToday, dayOffOn, plainMeta, type TodayItem, type TodayView } from '../../domain/schedule';
 import { BuildYourDay } from './BuildYourDay';
@@ -108,7 +108,7 @@ function Today({ data, now, T }: { data: TodayData; now: Date; T: Day }) {
   };
 
   if (dayOff) {
-    const holiday = holidayOn(T, holidaysOf(household));
+    const holiday = holidayOn(T, yearlyHolidays(household));
     return (
       <main className="screen today">
         <TodayHeader name={household.name} now={now} T={T} onSettings={() => navigate('/settings')} />
@@ -118,10 +118,10 @@ function Today({ data, now, T }: { data: TodayData; now: Date; T: Day }) {
               <Icon name="leaf" size={24} />
             </span>
             <h2 id="day-off-title" className="closed-hero__title">
-              {dayOff.label ? `${dayOff.label} · Day off` : 'Day off'}
+              {dayOffMessage(dayOff.label, !!holiday)}
             </h2>
             <p className="closed-hero__sub">
-              Nothing counts today. Anything due today moves to your next day back.
+              Nothing counts today. Anything due will be waiting when you&rsquo;re back.
             </p>
             <button type="button" className="outline-button outline-button--wide" onClick={() => cancelDayOff(T, !!holiday)}>
               Back to work
@@ -142,15 +142,15 @@ function Today({ data, now, T }: { data: TodayData; now: Date; T: Day }) {
               <Icon name="sun" size={24} />
             </span>
             <h2 id="away-title" className="closed-hero__title">
-              Out of office
+              Enjoy your trip
             </h2>
             <p className="closed-hero__sub">
               {trip?.endDate
-                ? `Back on ${weekdayDate(addDays(trip.endDate, 1))}. Vacation mode turns off by itself.`
-                : 'Nothing will count against you while you\u2019re away.'}
+                ? `Back ${weekdayDate(addDays(trip.endDate, 1))}. Nothing counts while you\u2019re away.`
+                : 'Nothing counts while you\u2019re away.'}
             </p>
             <button type="button" className="outline-button outline-button--wide" onClick={() => endVacation(T)}>
-              Turn off vacation mode
+              I&rsquo;m back
             </button>
           </section>
         </div>
@@ -165,7 +165,7 @@ function Today({ data, now, T }: { data: TodayData; now: Date; T: Day }) {
       {welcome && (
         <div className="today__body today__body--top">
           <div className="welcome-card" role="status">
-            <p>Welcome back. Start with Opening when you&rsquo;re ready.</p>
+            <p>Welcome back. Nothing piled up while you were gone. Start with Opening when you&rsquo;re ready.</p>
             <button type="button" className="welcome-card__close" onClick={() => dismissWelcomeBack(welcome.id)}>
               <Icon name="close" size={18} label="Dismiss" />
             </button>
