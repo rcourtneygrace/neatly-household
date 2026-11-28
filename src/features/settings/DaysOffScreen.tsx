@@ -82,13 +82,21 @@ export function DaysOffScreen() {
           <div className="days-off__add">
             <label className="field">
               <span className="field__label">Date</span>
-              <input
-                className="text-input"
-                type="date"
-                min={earliest}
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-              />
+              <span className="date-field">
+                <input
+                  className={date ? 'text-input' : 'text-input is-empty'}
+                  type="date"
+                  min={earliest}
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                />
+                {/* iPhone shows an empty date field as blank: give it a placeholder like the name field */}
+                {!date && (
+                  <span className="date-field__placeholder" aria-hidden>
+                    Choose a date
+                  </span>
+                )}
+              </span>
             </label>
             <label className="field">
               <span className="field__label">Name (optional)</span>

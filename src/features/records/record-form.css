@@ -62,6 +62,25 @@
   font-size: var(--fs-body-15);
   color: var(--text-ink);
 }
+/* iPhone Safari draws date and time fields its own way (gray, centered, shorter): match the text fields */
+.text-input[type='date'],
+.text-input[type='time'] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  height: 48px;
+  line-height: 48px;
+  font: inherit;
+  font-size: var(--fs-body-15);
+  text-align: left;
+}
+.text-input::-webkit-date-and-time-value {
+  margin: 0;
+  text-align: left;
+}
+.text-input::-webkit-datetime-edit {
+  padding: 0;
+}
 .text-input:focus,
 .detail-input-row input:focus,
 .select-wrap select:focus {
