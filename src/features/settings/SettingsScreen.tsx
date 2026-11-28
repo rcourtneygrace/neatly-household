@@ -5,11 +5,12 @@ import { Icon } from '../../ui';
 import { ActionSheet } from '../../ui/ActionSheet';
 import { useNow } from '../../ui/useNow';
 import { updateHousehold, useHousehold } from '../../data/hooks';
-import { currentOrNextVacation, endVacation } from '../../data/today';
+import { cancelDayOff, currentOrNextVacation, endVacation, takeDayOff } from '../../data/today';
 import { db } from '../../data/db';
 import { useHouseholdDay } from '../../data/day';
 import { addDays, hhmmLabel, toDay, weekdayDate } from '../../domain/dates';
-import { holidaysOf } from '../../domain/holidays';
+import { holidayOn, holidaysOf, offDaySpans } from '../../domain/holidays';
+import { dayOffOn } from '../../domain/schedule';
 import { exportBackup, importBackup, shareOrDownload } from '../../data/backup';
 import { loadSampleRecords } from '../../data/sampleRecords';
 import { loadSuggestedTasks } from '../../data/suggestedTasks';
@@ -36,6 +37,19 @@ export function SettingsScreen() {
   const [vacationSheet, setVacationSheet] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const trip = useLiveQuery(async () => currentOrNextVacation(await db.vacations.toArray(), T), [T]);
+  // Today's day off: one marked by hand, or a chosen holiday nobody has set to work
+  const todayOff = useLiveQuery(async () => {
+    const h = await db.household.toCollection().first();
+    const vacations = (await db.vacations.toArray()).filter((v) => !v.deletedAt);
+    const log = await db.dayLogs.where('date').equals(T).first();
+    const spans = offDaySpans({
+      today: T,
+      vacations,
+      holidays: h ? holidaysOf(h) : [],
+      workdays: new Set(log?.workday ? [T] : []),
+    });
+    return dayOffOn(T, spans) ?? null;
+  }, [T, household?.holidays?.join()]);
 
   useEffect(() => {
     if (household) setName(household.name);
@@ -115,6 +129,17 @@ export function SettingsScreen() {
         )}
         {trip && !onVacation && (
           <RowButton icon="close" title="Cancel planned vacation" tone="clay" onClick={() => endVacation(T)} />
+        )}
+        {!onVacation && (
+          <RowToggle
+            icon="sun"
+            title="Day off today"
+            detail={todayOff ? `${todayOff.label ? `${todayOff.label} · ` : ''}Nothing counts today` : 'Take today off'}
+            checked={!!todayOff}
+            onChange={(on) =>
+              on ? takeDayOff(T) : cancelDayOff(T, !!holidayOn(T, holidaysOf(household)))
+            }
+          />
         )}
         <RowLink
           icon="leaf"

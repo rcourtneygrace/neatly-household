@@ -12,7 +12,6 @@ import {
   reopenDay,
   setDone,
   skipItem,
-  takeDayOff,
   cancelDayOff,
   startDayEarly,
   undo,
@@ -179,12 +178,7 @@ function Today({ data, now, T }: { data: TodayData; now: Date; T: Day }) {
       ) : (
         <div className="today__body">
           {!opened && !showClosing && (
-            <>
-              <RoutineCard routine={data.routines.opening} type="opening" onComplete={onMarkOpening} />
-              <button type="button" className="today__day-off" onClick={() => takeDayOff(T)}>
-                Take today off
-              </button>
-            </>
+            <RoutineCard routine={data.routines.opening} type="opening" onComplete={onMarkOpening} />
           )}
           {opened && <OpenedBanner at={log?.openingAt} />}
           {showClosing && <RoutineCard routine={data.routines.closing} type="closing" onComplete={onMarkClosing} />}
@@ -337,8 +331,8 @@ function TodayHeader({ name, now, T, onSettings }: { name: string; now: Date; T:
           {name.trim().charAt(0).toUpperCase()}
         </button>
         <h1 className="today-header__name">{name}</h1>
-        <button type="button" className="today-header__settings" onClick={onSettings}>
-          <Icon name="sliders" size={20} label="Settings" />
+        <button type="button" className="icon-button" onClick={onSettings}>
+          <Icon name="settings" label="Settings" />
         </button>
       </div>
       <p className="today-header__date">
