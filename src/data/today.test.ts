@@ -77,7 +77,15 @@ describe('Today actions', () => {
     await startVacation('2026-10-02'); // already on: no second period
     expect((await db.vacations.toArray()).map((v) => v.endDate)).toEqual([null]);
     await endVacation('2026-10-09');
-    expect((await db.vacations.toArray())[0]).toMatchObject({ startDate: '2026-10-01', endDate: '2026-10-09' });
+    // the day it's turned off counts again
+    expect((await db.vacations.toArray())[0]).toMatchObject({ startDate: '2026-10-01', endDate: '2026-10-08' });
+  });
+
+  it('a vacation can have a return date, and a planned one can be cancelled', async () => {
+    await startVacation('2026-12-20', '2026-12-26');
+    expect((await db.vacations.toArray())[0]).toMatchObject({ kind: 'vacation', startDate: '2026-12-20', endDate: '2026-12-26' });
+    await endVacation('2026-12-10'); // before it starts: removed
+    expect((await db.vacations.toArray()).filter((v) => !v.deletedAt)).toHaveLength(0);
   });
 
   it('Build Your Day marks picks for today without changing their status', async () => {

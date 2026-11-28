@@ -1,0 +1,44 @@
+.vac-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 16px;
+}
+.vac-form__dates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.vac-form__dates .text-input:disabled {
+  background: var(--surface-row);
+  color: var(--text-muted);
+}
+.vac-form__quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.vac-chip {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--border-input);
+  border-radius: 20px;
+  background: var(--surface-white);
+  font-size: var(--fs-body-14);
+  font-weight: 600;
+  color: var(--text-subhead);
+}
+.vac-chip.is-on {
+  border-color: var(--brand-teal);
+  background: var(--surface-tint-light);
+  color: var(--teal-700);
+}
+.vac-form__summary {
+  font-size: var(--fs-body-14);
+  color: var(--text-subhead);
+}
+.vac-form__save {
+  flex: 0 0 auto;
+  margin-top: 16px;
+  min-height: 52px;
+}

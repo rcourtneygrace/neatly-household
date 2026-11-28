@@ -70,3 +70,8 @@ export function minutesOf(t: Date | string): number {
   }
   return t.getHours() * 60 + t.getMinutes();
 }
+
+/** "Fri, Dec 25" */
+export function weekdayDate(day: Day): string {
+  return fromDay(day).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}

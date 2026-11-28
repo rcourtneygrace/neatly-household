@@ -193,14 +193,46 @@ export async function dismissBuildDay(today: Day): Promise<void> {
 
 /* ---------- Vacation mode ---------- */
 
-export async function startVacation(today: Day): Promise<void> {
-  const open = (await db.vacations.toArray()).find((v) => !v.deletedAt && v.endDate === null);
-  if (!open) await db.vacations.add(stamp({ startDate: today, endDate: null, welcomeSeen: false }));
+const isTrip = (v: VacationPeriod) => !v.deletedAt && v.kind !== 'dayOff';
+
+/** The vacation on `day`, or the next one planned after it. */
+export function currentOrNextVacation(vacations: VacationPeriod[], day: Day): VacationPeriod | undefined {
+  return vacations
+    .filter((v) => isTrip(v) && (v.endDate === null || v.endDate >= day))
+    .sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
 }
 
+/**
+ * Turn on (or plan) vacation mode from `start`. `lastDay` is the last day away (the day before
+ * you're back); null means "not sure yet", on until turned off. It turns off by itself after lastDay.
+ */
+export async function startVacation(start: Day, lastDay: Day | null = null): Promise<void> {
+  await db.transaction('rw', db.vacations, async () => {
+    const all = await db.vacations.toArray();
+    const existing = currentOrNextVacation(all, start);
+    if (existing && existing.startDate <= (lastDay ?? '9999-12-31')) {
+      // Already on: keep when it started and only change when you're back
+      const startDate = existing.startDate < start ? existing.startDate : start;
+      await db.vacations.update(existing.id, { startDate, endDate: lastDay, welcomeSeen: false, updatedAt: nowISO() });
+      return;
+    }
+    await db.vacations.add(stamp({ kind: 'vacation' as const, startDate: start, endDate: lastDay, welcomeSeen: false }));
+  });
+}
+
+/**
+ * Turn vacation mode off on `today`: today counts again. A vacation that hasn't started yet,
+ * or started today, is simply removed.
+ */
 export async function endVacation(today: Day): Promise<void> {
-  const open = (await db.vacations.toArray()).filter((v) => !v.deletedAt && v.endDate === null);
-  for (const v of open) await db.vacations.update(v.id, { endDate: today, updatedAt: nowISO() });
+  await db.transaction('rw', db.vacations, async () => {
+    const now = nowISO();
+    for (const v of (await db.vacations.toArray()).filter(isTrip)) {
+      if (v.endDate !== null && v.endDate < today) continue;
+      if (v.startDate >= today) await db.vacations.update(v.id, { deletedAt: now, updatedAt: now });
+      else await db.vacations.update(v.id, { endDate: addDays(today, -1), updatedAt: now });
+    }
+  });
 }
 
 /* ---------- Days off ---------- */

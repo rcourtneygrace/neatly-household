@@ -24,7 +24,7 @@ import type { RoutineTemplate } from '../../data/types';
 import { useHouseholdDay } from '../../data/day';
 import { closingTime, hoursOn } from '../../domain/hours';
 import { holidayOn, holidaysOf } from '../../domain/holidays';
-import { addDays, clockTime, fromDay, hhmmLabel, longDate, toDay, type Day } from '../../domain/dates';
+import { addDays, clockTime, fromDay, weekdayDate, hhmmLabel, longDate, toDay, type Day } from '../../domain/dates';
 import { buildToday, dayOffOn, plainMeta, type TodayItem, type TodayView } from '../../domain/schedule';
 import { BuildYourDay } from './BuildYourDay';
 import { SkipSheet, TaskActionsSheet } from './TaskActionsSheet';
@@ -85,9 +85,14 @@ function Today({ data, now, T }: { data: TodayData; now: Date; T: Day }) {
   const closed = log?.closingStatus === 'done';
   // Closing: from an hour before close until the next opening
   const showClosing = closingTime(now, T, household.businessHours);
-  const away = data.vacations.some((v) => v.kind !== 'dayOff' && v.endDate === null && v.startDate <= T);
+  const trip = data.vacations.find(
+    (v) => v.kind !== 'dayOff' && v.startDate <= T && (v.endDate === null || v.endDate >= T),
+  );
+  const away = !!trip;
   const dayOff = !away ? dayOffOn(T, data.offDays) : undefined;
-  const welcome = !away ? data.vacations.find((v) => v.endDate !== null && !v.welcomeSeen) : undefined;
+  const welcome = !away
+    ? data.vacations.find((v) => v.kind !== 'dayOff' && v.endDate !== null && v.endDate < T && !v.welcomeSeen)
+    : undefined;
 
   const onMarkOpening = async () => {
     await completeOpening(T);
@@ -140,7 +145,11 @@ function Today({ data, now, T }: { data: TodayData; now: Date; T: Day }) {
             <h2 id="away-title" className="closed-hero__title">
               Out of office
             </h2>
-            <p className="closed-hero__sub">Nothing will count against you while you&rsquo;re away.</p>
+            <p className="closed-hero__sub">
+              {trip?.endDate
+                ? `Back on ${weekdayDate(addDays(trip.endDate, 1))}. Vacation mode turns off by itself.`
+                : 'Nothing will count against you while you\u2019re away.'}
+            </p>
             <button type="button" className="outline-button outline-button--wide" onClick={() => endVacation(T)}>
               Turn off vacation mode
             </button>

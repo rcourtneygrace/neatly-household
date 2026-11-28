@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ActionSheet } from '../../ui/ActionSheet';
+import { Group, RowButton, RowInfo } from './rows';
 import { APP_URL, inviteLink, joinHousehold, leaveHousehold, parseInvite, startSharing, syncNow, useSyncState } from '../../data/sync';
 
 /** Hand a link to the iOS share sheet, or copy it where sharing isn't available. */
@@ -86,44 +87,33 @@ export function SharingSection({ onStatus }: { onStatus: (s: string | undefined)
   };
 
   return (
-    <section className="settings__group" aria-labelledby="sharing-heading">
-      <h2 id="sharing-heading" className="settings__heading">
-        {sync.key ? 'Shared household' : 'Share this household'}
-      </h2>
-      {sync.key ? (
-        <p className="settings__hint">
-          {sync.error ? ERRORS[sync.error] : ago(sync.lastSyncedAt)}. Everyone you invite sees the same plan, check-offs
-          and records.
-        </p>
-      ) : (
-        <p className="settings__hint">
-          Invite someone who lives with you. You'll both see the same plan, check-offs and records, kept in step on each
-          phone.
-        </p>
-      )}
-      <button type="button" className="outline-button outline-button--wide" disabled={busy} onClick={invite}>
-        {sync.key ? 'Send invite link' : 'Invite to this household'}
-      </button>
-      {sync.key && (
-        <>
-          <p className="settings__hint settings__hint--small">
-            Anyone with the invite link can see and change this household. Only send it to people in your home.
-          </p>
-          <div className="settings__row-buttons">
-            <button type="button" className="settings__text-button" disabled={busy} onClick={() => void syncNow()}>
-              Sync now
-            </button>
-            <button type="button" className="settings__text-button" onClick={() => setConfirmLeave(true)}>
-              Stop sharing on this phone
-            </button>
-          </div>
-        </>
-      )}
-      {!sync.key && !joining && (
-        <button type="button" className="settings__text-button" onClick={() => setJoining(true)}>
-          Join someone else's household
-        </button>
-      )}
+    <>
+      <Group
+        title="People"
+        footer={
+          sync.key
+            ? 'Anyone with the invite link can see and change this household. Only send it to people in your home.'
+            : "Invite someone who lives with you. You'll both see the same plan, check-offs and records."
+        }
+      >
+        {sync.key ? (
+          <>
+            <RowInfo
+              icon="people"
+              title="Shared household"
+              detail={sync.error ? ERRORS[sync.error] : ago(sync.lastSyncedAt)}
+            />
+            <RowButton icon="share" title="Send invite link" disabled={busy} onClick={invite} />
+            <RowButton icon="sync" title="Sync now" disabled={busy} onClick={() => void syncNow()} />
+            <RowButton icon="logout" title="Stop sharing on this phone" tone="clay" onClick={() => setConfirmLeave(true)} />
+          </>
+        ) : (
+          <>
+            <RowButton icon="people" title="Invite to this household" detail="Share with your partner or family" disabled={busy} onClick={invite} />
+            <RowButton icon="link" title="Join someone else's household" detail="Paste an invite you were sent" onClick={() => setJoining((j) => !j)} />
+          </>
+        )}
+      </Group>
       {!sync.key && joining && (
         <form
           className="settings__join"
@@ -145,6 +135,7 @@ export function SharingSection({ onStatus }: { onStatus: (s: string | undefined)
               autoCorrect="off"
               spellCheck={false}
               enterKeyHint="go"
+              autoFocus
             />
           </label>
           <button type="submit" className="outline-button outline-button--wide" disabled={busy || !code.trim()}>
@@ -187,21 +178,18 @@ export function SharingSection({ onStatus }: { onStatus: (s: string | undefined)
           },
         ]}
       />
-    </section>
+    </>
   );
 }
 
 /** Settings: a link to a fresh, empty Neatly, for someone starting their own household. */
 export function TellSomeoneSection({ onStatus }: { onStatus: (s: string | undefined) => void }) {
   return (
-    <section className="settings__group">
-      <h2 className="settings__heading">Share Neatly</h2>
-      <p className="settings__hint">
-        Send someone their own blank copy of Neatly. Their household is separate and starts empty.
-      </p>
-      <button
-        type="button"
-        className="outline-button outline-button--wide"
+    <Group title="Share Neatly" footer="They get their own blank copy. Their household is separate from yours.">
+      <RowButton
+        icon="share"
+        title="Send Neatly to someone"
+        detail="A friend or family member"
         onClick={async () => {
           const r = await shareLink(
             'Neatly Household',
@@ -210,9 +198,7 @@ export function TellSomeoneSection({ onStatus }: { onStatus: (s: string | undefi
           );
           if (r === 'copied') onStatus('Link copied. Paste it into a message.');
         }}
-      >
-        Send Neatly to someone
-      </button>
-    </section>
+      />
+    </Group>
   );
 }

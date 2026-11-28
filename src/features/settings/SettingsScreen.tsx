@@ -1,58 +1,71 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { Icon } from '../../ui';
 import { ActionSheet } from '../../ui/ActionSheet';
+import { useNow } from '../../ui/useNow';
 import { updateHousehold, useHousehold } from '../../data/hooks';
-import { endVacation, startVacation } from '../../data/today';
-import { Toggle } from '../../ui/controls';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { currentOrNextVacation, endVacation } from '../../data/today';
 import { db } from '../../data/db';
-import { currentHouseholdDay } from '../../data/day';
+import { useHouseholdDay } from '../../data/day';
+import { addDays, hhmmLabel, toDay, weekdayDate } from '../../domain/dates';
+import { holidaysOf } from '../../domain/holidays';
 import { exportBackup, importBackup, shareOrDownload } from '../../data/backup';
 import { loadSampleRecords } from '../../data/sampleRecords';
 import { loadSuggestedTasks } from '../../data/suggestedTasks';
-import type { BusinessHours } from '../../data/types';
 import { SharingSection, TellSomeoneSection } from './SharingSection';
+import { Group, RowButton, RowField, RowLink, RowToggle } from './rows';
+import { VacationSheet } from './VacationSheet';
 import '../records/records.css';
 import '../records/record-form.css';
 import './settings.css';
 import './plan-settings.css';
 
 /**
- * Settings, opened from the gear on each tab.
- * Plan Settings and Seasons (Figma 16:2803, 16:2695) open from here.
- * Household name and hours have no Figma screen yet; they stand in until the setup flow exists.
+ * Settings, opened from the gear on each tab. Grouped like iOS Settings: Household, Time away,
+ * People, Share Neatly, Backup, Getting started. Each group is a card of rows with a short note.
  */
 export function SettingsScreen() {
   const navigate = useNavigate();
   const household = useHousehold();
+  const now = useNow();
+  const T = useHouseholdDay(now) ?? toDay(now);
   const [name, setName] = useState('');
-  const [hours, setHours] = useState<BusinessHours | null>(null);
   const [status, setStatus] = useState<string>();
   const [pendingImport, setPendingImport] = useState<File | null>(null);
+  const [vacationSheet, setVacationSheet] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  // Vacation mode is on whenever a vacation period has no end date
-  const onVacation = useLiveQuery(async () => (await db.vacations.toArray()).some((v) => !v.deletedAt && v.endDate === null)) ?? false;
+  const trip = useLiveQuery(async () => currentOrNextVacation(await db.vacations.toArray(), T), [T]);
 
   useEffect(() => {
-    if (household) {
-      setName(household.name);
-      setHours(household.businessHours);
-    }
+    if (household) setName(household.name);
   }, [household?.id, household?.name]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!household || !hours) return null;
+  // The status note fades after a few seconds
+  useEffect(() => {
+    if (!status || status.endsWith('…')) return;
+    const id = window.setTimeout(() => setStatus(undefined), 4000);
+    return () => window.clearTimeout(id);
+  }, [status]);
+
+  if (!household) return null;
+  const onVacation = !!trip && trip.startDate <= T;
+  const hours = household.businessHours;
+  const holidays = holidaysOf(household).length;
 
   const saveName = () => {
     const n = name.trim();
     if (n && n !== household.name) updateHousehold({ name: n });
     else setName(household.name);
   };
-  const setHour = (key: keyof BusinessHours, value: string) => {
-    const next = { ...hours, [key]: value };
-    setHours(next);
-    if (value) updateHousehold({ businessHours: next });
-  };
+
+  const vacationDetail = !trip
+    ? "Turn on when you're away"
+    : onVacation
+      ? trip.endDate
+        ? `On · back ${weekdayDate(addDays(trip.endDate, 1))}`
+        : 'On until you turn it off'
+      : `Planned ${weekdayDate(trip.startDate)}${trip.endDate ? ` – back ${weekdayDate(addDays(trip.endDate, 1))}` : ''}`;
 
   return (
     <main className="settings">
@@ -65,64 +78,59 @@ export function SettingsScreen() {
         </div>
       </header>
 
-      <section className="settings__group plan-settings__toggle" aria-label="Vacation mode">
-        <Toggle
-          title="Vacation mode"
-          hint="Nothing will count against you while you're away."
-          checked={onVacation}
-          onChange={async (on) => (on ? startVacation(await currentHouseholdDay()) : endVacation(await currentHouseholdDay()))}
+      <Group title="Household">
+        <RowField icon="home" label="Household name">
+          <input
+            className="set-row__input"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onBlur={saveName}
+            onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+            enterKeyHint="done"
+          />
+        </RowField>
+        <RowLink
+          icon="clock"
+          title="Business hours"
+          detail={`Weekdays ${hhmmLabel(hours.weekdayOpen)} – ${hhmmLabel(hours.weekdayClose)}`}
+          to="/settings/hours"
         />
-      </section>
+        <RowLink icon="sliders" title="Plan settings" detail="Week, month, year and seasons" to="/settings/plan" />
+      </Group>
 
-      <section className="settings__group">
-        <Link to="/settings/days-off" className="link-field">
-          <span>Days off</span>
-          <Icon name="chevron-right" size={18} />
-        </Link>
-        <p className="settings__hint">Holidays and single days when nothing counts.</p>
-      </section>
-
-      <section className="settings__group">
-        <Link to="/settings/plan" className="link-field">
-          <span>Plan settings</span>
-          <Icon name="chevron-right" size={18} />
-        </Link>
-        <p className="settings__hint">Week, month and year start, seasons, and clearing done items.</p>
-      </section>
-
-      <section className="settings__group">
-        <h2 className="settings__heading">Household</h2>
-        <label className="field">
-          <span className="field__label">Household name</span>
-          <input className="text-input" value={name} onChange={(e) => setName(e.target.value)} onBlur={saveName} />
-        </label>
-      </section>
+      <Group title="Time away" footer="Nothing counts against you while you're away or on a day off.">
+        <RowToggle
+          icon="suitcase"
+          title="Vacation mode"
+          detail={vacationDetail}
+          checked={onVacation}
+          onChange={(on) => (on ? setVacationSheet(true) : endVacation(T))}
+        />
+        {trip && (
+          <RowButton
+            icon="calendar"
+            title={onVacation ? 'Change return date' : 'Change vacation dates'}
+            onClick={() => setVacationSheet(true)}
+          />
+        )}
+        {trip && !onVacation && (
+          <RowButton icon="close" title="Cancel planned vacation" tone="clay" onClick={() => endVacation(T)} />
+        )}
+        <RowLink
+          icon="leaf"
+          title="Days off"
+          detail={holidays ? `${holidays} ${holidays === 1 ? 'holiday' : 'holidays'} each year, and single days` : 'Holidays and single days'}
+          to="/settings/days-off"
+        />
+      </Group>
 
       <SharingSection onStatus={setStatus} />
+      <TellSomeoneSection onStatus={setStatus} />
 
-
-      <section className="settings__group">
-        <h2 className="settings__heading">Business hours</h2>
-        <p className="settings__hint">
-          Each day starts at the open time with Opening. Closing appears an hour before close and stays until the next
-          open time, so a late night still counts as that day.
-        </p>
-        <div className="settings__hours">
-          <HourField label="Weekdays open" value={hours.weekdayOpen} onChange={(v) => setHour('weekdayOpen', v)} />
-          <HourField label="Weekdays close" value={hours.weekdayClose} onChange={(v) => setHour('weekdayClose', v)} />
-          <HourField label="Weekends open" value={hours.weekendOpen} onChange={(v) => setHour('weekendOpen', v)} />
-          <HourField label="Weekends close" value={hours.weekendClose} onChange={(v) => setHour('weekendClose', v)} />
-        </div>
-      </section>
-
-      <section className="settings__group">
-        <h2 className="settings__heading">Backup</h2>
-        <p className="settings__hint">
-          Save a backup file now and then, for example to Files or iCloud Drive.
-        </p>
-        <button
-          type="button"
-          className="outline-button outline-button--wide"
+      <Group title="Backup" footer="Save a backup file now and then, for example to Files or iCloud Drive.">
+        <RowButton
+          icon="save"
+          title="Save a backup"
           onClick={async () => {
             setStatus('Preparing backup…');
             try {
@@ -132,12 +140,8 @@ export function SettingsScreen() {
               setStatus('The backup could not be made. Please try again.');
             }
           }}
-        >
-          Save a backup
-        </button>
-        <button type="button" className="outline-button outline-button--wide" onClick={() => fileRef.current?.click()}>
-          Restore from a backup
-        </button>
+        />
+        <RowButton icon="restore" title="Restore from a backup" onClick={() => fileRef.current?.click()} />
         <input
           ref={fileRef}
           type="file"
@@ -149,43 +153,41 @@ export function SettingsScreen() {
             e.target.value = '';
           }}
         />
-      </section>
+      </Group>
 
-      <TellSomeoneSection onStatus={setStatus} />
-
-      <section className="settings__group">
-        <h2 className="settings__heading">Try it out</h2>
-        <p className="settings__hint">
-          Suggested tasks give you a starter plan for each part of the house. Example records (paint, filters, contacts)
-          show how Records works. Nothing already on your phone is changed.
-        </p>
-        <button
-          type="button"
-          className="outline-button outline-button--wide"
+      <Group title="Getting started" footer="Nothing already in Neatly is changed.">
+        <RowButton
+          icon="sparkle"
+          title="Add suggested tasks"
+          detail="A starter plan for each part of the house"
           onClick={async () => {
             const n = await loadSuggestedTasks();
             setStatus(n ? `Added ${n} suggested tasks.` : 'The suggested tasks are already on your plan.');
           }}
-        >
-          Add suggested tasks
-        </button>
-        <button
-          type="button"
-          className="outline-button outline-button--wide"
+        />
+        <RowButton
+          icon="tab-records"
+          title="Add example records"
+          detail="Paint, filters and contacts, to see how Records works"
           onClick={async () => {
             const n = await loadSampleRecords();
             setStatus(n ? `Added ${n} example records.` : 'The example records are already here.');
           }}
-        >
-          Add example records
-        </button>
-      </section>
+        />
+      </Group>
 
       {status && (
-        <p className="settings__status" role="status">
+        <p className="settings__toast" role="status">
           {status}
         </p>
       )}
+
+      <VacationSheet
+        open={vacationSheet}
+        today={T}
+        existing={trip ?? undefined}
+        onClose={() => setVacationSheet(false)}
+      />
 
       <ActionSheet
         open={!!pendingImport}
@@ -210,14 +212,5 @@ export function SettingsScreen() {
         ]}
       />
     </main>
-  );
-}
-
-function HourField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
-  return (
-    <label className="field">
-      <span className="field__label">{label}</span>
-      <input className="text-input" type="time" value={value} onChange={(e) => onChange(e.target.value)} />
-    </label>
   );
 }

@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useState } from 'react';
+import { Sheet } from '../../ui/BottomSheet';
 import { SKIP_REASONS } from '../../data/today';
 import type { Cadence } from '../../data/types';
 import type { TodayItem } from '../../domain/schedule';
@@ -12,34 +13,6 @@ const SKIP_LABEL: Record<Cadence, string> = {
   seasonal: 'Skip this season',
   yearly: 'Skip this year',
 };
-
-/** A bottom sheet that closes on Escape and on a tap outside. */
-function Sheet({ open, onClose, labelledBy, children }: { open: boolean; onClose: () => void; labelledBy: string; children: ReactNode }) {
-  const panel = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    panel.current?.querySelector<HTMLElement>('button, input')?.focus();
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
-  if (!open) return null;
-  return (
-    <div className="task-sheet" role="presentation" onClick={onClose}>
-      <div
-        ref={panel}
-        className="task-sheet__panel"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={labelledBy}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="sheet__handle" aria-hidden />
-        {children}
-      </div>
-    </div>
-  );
-}
 
 /**
  * Task actions (Build Your Day doc): opens when a task row is tapped anywhere but its checkbox.

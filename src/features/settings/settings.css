@@ -144,3 +144,19 @@
 .date-field input:focus + .date-field__placeholder {
   display: none;
 }
+
+/* A short note that fades after a few seconds, above the tab bar area */
+.settings__toast {
+  position: fixed;
+  left: var(--gutter);
+  right: var(--gutter);
+  bottom: calc(env(safe-area-inset-bottom) + 16px);
+  z-index: 40;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--text-ink);
+  color: var(--surface-white);
+  font-size: var(--fs-body-14);
+  line-height: 1.35;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+}

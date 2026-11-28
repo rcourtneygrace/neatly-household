@@ -9,7 +9,7 @@ import { useHouseholdDay } from '../../data/day';
 import { updateHousehold, useHousehold } from '../../data/hooks';
 import { cancelDayOff, takeDayOff } from '../../data/today';
 import { useNow } from '../../ui/useNow';
-import { addDays, fromDay, toDay, type Day } from '../../domain/dates';
+import { addDays, toDay, weekdayDate } from '../../domain/dates';
 import { HOLIDAYS, holidaysOf, nextDate } from '../../domain/holidays';
 import '../records/record-form.css';
 import '../plan/plan.css';
@@ -18,9 +18,6 @@ import './settings.css';
 
 /** How far back a day off can be marked: enough to fix a forgotten one, not to rewrite a month. */
 const DAYS_BACK = 7;
-
-const weekdayDate = (day: Day) =>
-  fromDay(day).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
 /**
  * Settings → Days off: holidays taken off every year, and single days off (planned ahead, or
