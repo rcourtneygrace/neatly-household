@@ -1,6 +1,6 @@
 import type { Cadence, DayLog, Department, Occurrence, Task } from '../data/types';
 import { addDays, fromDay, toDay, weekdayOf, type Day } from './dates';
-import { doneDay, inVacation, instancesAround, windowEnd, occKey, periodFor, type Instance, type PlanCalendar, type VacationSpan } from './schedule';
+import { doneDay, inVacation, instancesAround, windowEnd, occKey, type Instance, type PlanCalendar, type VacationSpan } from './schedule';
 import { CADENCE_LABEL, WEEKDAYS } from './tasks';
 
 /**
@@ -12,14 +12,20 @@ import { CADENCE_LABEL, WEEKDAYS } from './tasks';
  * 85+ is Flowing, 65–84 Steady, under 65 Ready for a reset. Never a grade, never red.
  */
 
-export type Range = 'month' | 'season' | 'year';
-export const RANGE_LABEL: Record<Range, string> = { month: 'Month', season: 'Season', year: 'Year' };
-const RANGE_CADENCE: Record<Range, Cadence> = { month: 'monthly', season: 'seasonal', year: 'yearly' };
+/**
+ * How far back each task is looked at: its last few times, on its own clock. Weekly tasks over
+ * about two months, yearly ones over two years. Nothing starts over on the 1st.
+ */
+export const LOOKBACK_DAYS: Record<Cadence, number> = {
+  daily: 28,
+  weekly: 56,
+  monthly: 183,
+  seasonal: 365,
+  yearly: 730,
+};
 
-export function rangeFor(range: Range, today: Day, cal: PlanCalendar): { from: Day; to: Day } {
-  const p = periodFor(RANGE_CADENCE[range], today, cal);
-  return { from: p.start, to: p.end };
-}
+/** The window patterns (rhythm, busy days) are drawn from. */
+export const PATTERN_DAYS = 60;
 
 export type Outcome = 'onTime' | 'late' | 'missed' | 'deferred' | 'open' | 'skip';
 
@@ -128,11 +134,21 @@ function occIndex(occurrences: Occurrence[]) {
 }
 
 export function taskStats(input: AnalysisInput, from: Day, to: Day): TaskStats[] {
+  return statsOver(input, () => ({ from, to }));
+}
+
+/** Each task over its own recent stretch (LOOKBACK_DAYS), up to today. */
+export function recentTaskStats(input: AnalysisInput): TaskStats[] {
+  return statsOver(input, (task) => ({ from: addDays(input.today, -LOOKBACK_DAYS[task.cadence]), to: input.today }));
+}
+
+function statsOver(input: AnalysisInput, windowOf: (task: Task) => { from: Day; to: Day }): TaskStats[] {
   const occ = occIndex(input.occurrences);
   const opened = openedSet(input.dayLogs);
   return input.tasks
     .filter((t) => !t.deletedAt && !t.archived)
     .map((task) => {
+      const { from, to } = windowOf(task);
       const judged = instancesBetween(task, from, to, input.cal).map((inst) => {
         const o = occ.get(occKey(task.id, inst.key));
         return { inst, occ: o, outcome: judge(task, inst, o, input.today, opened, input.vacations) };
@@ -162,36 +178,31 @@ export function departmentStats(stats: TaskStats[], departments: Department[]): 
     });
 }
 
-/* ---------- Home health sentence ---------- */
+/* ---------- Where your time is best spent ---------- */
 
-export function homeHealth(depts: DepartmentStats[], range: Range): { title: string; body: string } {
-  const word = range === 'season' ? 'season' : range;
-  const tally = depts.reduce((t, d) => addTally(t, d.tally), emptyTally());
-  const overall = feelingOf(scoreOf(tally));
-  if (!overall) {
-    return {
-      title: 'Your rhythm will show here soon',
-      body: 'Check off tasks on Today for a week or two and this page will show how your home is running. There is nothing to judge yet.',
-    };
-  }
-  const reset = depts.filter((d) => d.feeling === 'reset').map((d) => d.department.name);
-  const title =
-    overall === 'flowing'
-      ? 'Your home is in a good rhythm'
-      : overall === 'steady'
-        ? 'Your home is finding its rhythm'
-        : 'Your home could use a little room';
-  const lead =
-    overall === 'reset'
-      ? `A good part of what you planned this ${word} is still waiting, and that is okay.`
-      : `Most of what you planned this ${word} found its time.`;
-  const rest = depts.filter((d) => d.feeling && d.feeling !== 'reset');
-  const restWord = rest.every((d) => d.feeling === 'flowing') ? 'flowing' : 'steady';
-  const tail =
-    reset.length === 0
-      ? ` Everything is ${restWord}.`
-      : ` ${reset.length > 2 ? `${reset.length} departments` : listText(reset)} could use a little room next${rest.length ? `, and everything else is ${restWord}` : ''}.`;
-  return { title, body: lead + tail };
+export interface HomeFocus {
+  title: string;
+  /** The departments that would feel spare time most (at most two) */
+  focus: DepartmentStats[];
+  /** Nothing to go on yet */
+  empty: boolean;
+}
+
+/**
+ * The top of Analysis: is the home in a good rhythm, and if not, where would time help most.
+ * No numbers: just the headline and up to two departments.
+ */
+export function homeFocus(depts: DepartmentStats[]): HomeFocus {
+  const judged = depts.filter((d) => d.score !== null);
+  if (judged.length === 0) return { title: 'Your rhythm will show here soon', focus: [], empty: true };
+  const needing = judged
+    .filter((d) => d.feeling !== 'flowing')
+    .sort((a, b) => (a.score ?? 0) - (b.score ?? 0))
+    .slice(0, 2);
+  const title = judged.some((d) => d.feeling === 'reset')
+    ? 'Your home could use a little attention'
+    : 'Your home is in a good rhythm';
+  return { title, focus: needing, empty: false };
 }
 
 /* ---------- Suggestions ---------- */

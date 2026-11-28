@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Icon } from '../../ui';
 import { FEELING_LABEL, type Feeling } from '../../domain/analysis';
 
-/** Department ring (Figma 16:3218): track plus progress arc, score in the middle. */
+/** Department ring (Figma 16:3218): track plus progress arc. No number: it is a feeling, not a grade. */
 export function Ring({ score, feeling, size = 76 }: { score: number | null; feeling: Feeling | null; size?: number }) {
   const stroke = 9;
   const r = (size - stroke) / 2 - 2;
@@ -26,7 +26,6 @@ export function Ring({ score, feeling, size = 76 }: { score: number | null; feel
           />
         )}
       </svg>
-      <span className="ring__score">{score ?? '–'}</span>
     </span>
   );
 }

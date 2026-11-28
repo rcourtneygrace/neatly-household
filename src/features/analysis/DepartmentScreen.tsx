@@ -5,27 +5,23 @@ import { goBack } from '../../ui/goBack';
 import { useNow } from '../../ui/useNow';
 import { useHouseholdDay } from '../../data/day';
 import { useAnalysisData, type AnalysisData } from '../../data/analysis';
-import { toDay, type Day } from '../../domain/dates';
+import { toDay } from '../../domain/dates';
 import {
   FEELING_LABEL,
   LESS_OFTEN,
   SLIP_LABEL,
   cadenceWord,
-  countWord,
   departmentStats,
   isWeather,
   mostCommon,
-  rangeFor,
   scoreOf,
   slipOf,
-  taskStats,
+  recentTaskStats,
   type DepartmentStats,
-  type Range,
   type SlipKind,
   type TaskStats,
 } from '../../domain/analysis';
 import { CADENCES, CADENCE_LABEL, scheduleLabel, taskCountLabel } from '../../domain/tasks';
-import { useRange } from './hooks';
 import { SectionTitle, SuggestionNote } from './parts';
 import './analysis.css';
 
@@ -38,16 +34,14 @@ export function DepartmentScreen() {
   if (!data) return <main className="screen" />;
   const department = data.departments.find((d) => d.id === id);
   if (!department) return <Navigate to="/analysis" replace />;
-  return <Department data={data} T={T} id={department.id} />;
+  return <Department data={data} id={department.id} />;
 }
 
-function Department({ data, T, id }: { data: AnalysisData; T: Day; id: string }) {
-  const [range] = useRange();
+function Department({ data, id }: { data: AnalysisData; id: string }) {
   const navigate = useNavigate();
-  const { from, to } = rangeFor(range, T, data.cal);
   const dept = useMemo(
-    () => departmentStats(taskStats(data, from, to), data.departments).find((d) => d.department.id === id)!,
-    [data, from, to, id],
+    () => departmentStats(recentTaskStats(data), data.departments).find((d) => d.department.id === id)!,
+    [data, id],
   );
   const slipping = dept.tasks
     .map((s) => ({ s, kind: slipOf(s) }))
@@ -56,7 +50,7 @@ function Department({ data, T, id }: { data: AnalysisData; T: Day; id: string })
   const steady = dept.tasks.filter((s) => !slipOf(s) && s.task.timingMode === 'specific' && s.task.cadence !== 'daily');
   const reasons = dept.tasks.flatMap((s) => s.deferReasons);
   const topReason = mostCommon(reasons);
-  const status = statusCopy(dept, range, topReason, slipping.length);
+  const status = statusCopy(dept, topReason, slipping.length);
   const first = slipping[0]?.s.task;
 
   return (
@@ -68,7 +62,7 @@ function Department({ data, T, id }: { data: AnalysisData; T: Day; id: string })
         <p className="kicker">Analysis · Department</p>
         <h1 className="page-header__title">{dept.department.name}</h1>
         <p className="dept-header__sub">
-          {taskCountLabel(dept.tasks.length)} · this {range}
+          {taskCountLabel(dept.tasks.length)}
         </p>
       </header>
 
@@ -127,7 +121,7 @@ function Department({ data, T, id }: { data: AnalysisData; T: Day; id: string })
             />
             <div className="slip-list">
               {slipping.slice(0, 3).map(({ s, kind }) => (
-                <SlipCard key={s.task.id} s={s} kind={kind} range={range} />
+                <SlipCard key={s.task.id} s={s} kind={kind} />
               ))}
             </div>
           </>
@@ -155,13 +149,13 @@ function Department({ data, T, id }: { data: AnalysisData; T: Day; id: string })
 
         {reasons.length > 0 && (
           <p className="an-quiet-card an-quiet-card--left">
-            Set aside {countWord(reasons.length)} this {range}
+            Things here have been set aside lately
             {topReason ? (
               <>
                 , most often for <strong>{topReason.toLowerCase()}</strong>
               </>
             ) : null}
-            . That is a good reason, and it is not counted against you.
+            .
           </p>
         )}
       </div>
@@ -173,7 +167,7 @@ function order(k: SlipKind) {
   return { setAside: 0, late: 1, behind: 2 }[k];
 }
 
-function statusCopy(d: DepartmentStats, range: Range, reason: string | null, slipping: number) {
+function statusCopy(d: DepartmentStats, reason: string | null, slipping: number) {
   if (!d.feeling) {
     return {
       title: d.tasks.length ? 'Its rhythm will show here soon' : 'No tasks here yet',
@@ -183,12 +177,12 @@ function statusCopy(d: DepartmentStats, range: Range, reason: string | null, sli
     };
   }
   if (d.feeling === 'flowing') {
-    return { title: 'Flowing nicely', body: `Almost everything here found its time this ${range}. Nothing to change.` };
+    return { title: 'Flowing nicely', body: 'Almost everything here has been finding its time. Nothing to change.' };
   }
   if (d.feeling === 'steady') {
     return {
       title: 'Mostly steady',
-      body: `Most of what is planned here found its time this ${range}.${slipping ? ' A task or two below could use a small change.' : ''}`,
+      body: `Most of what is planned here has been finding its time.${slipping ? ' A task or two below could use a small change.' : ''}`,
     };
   }
   if (isWeather(reason)) {
@@ -212,15 +206,15 @@ function cadenceLabel(score: number | null, t: { deferred: number }, rows: TaskS
   return isWeather(reason) ? 'Waiting on weather' : 'Ready for a reset';
 }
 
-function SlipCard({ s, kind, range }: { s: TaskStats; kind: SlipKind; range: Range }) {
+function SlipCard({ s, kind }: { s: TaskStats; kind: SlipKind }) {
   const navigate = useNavigate();
   const less = LESS_OFTEN[s.task.cadence];
   const reason = mostCommon(s.deferReasons);
   const detail =
     kind === 'setAside'
-      ? `Set aside ${countWord(s.tally.deferred)} this ${range}${reason ? `, mostly for ${reason.toLowerCase()}` : ''}.`
+      ? `Keeps getting set aside${reason ? `, mostly for ${reason.toLowerCase()}` : ''}.`
       : kind === 'late'
-        ? `Finished late or missed in most ${unitOf(s)} this ${range}.`
+        ? 'Keeps getting pushed lately.'
         : `Usually done a little after its time.`;
   const tip =
     kind === 'setAside'

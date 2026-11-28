@@ -1,15 +1,5 @@
 import { useCallback, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import type { Range, Suggestion } from '../../domain/analysis';
-
-export const RANGES: Range[] = ['month', 'season', 'year'];
-
-export function useRange(): [Range, (r: Range) => void] {
-  const [params, setParams] = useSearchParams();
-  const r = params.get('range');
-  const range = (RANGES.includes(r as Range) ? r : 'season') as Range;
-  return [range, (next) => setParams(next === 'season' ? {} : { range: next }, { replace: true })];
-}
+import type { Suggestion } from '../../domain/analysis';
 
 export function suggestionKey(s: Suggestion) {
   return `${s.task.id}:${s.kind}:${s.to}`;

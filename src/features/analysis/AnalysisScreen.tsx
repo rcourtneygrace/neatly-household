@@ -4,29 +4,29 @@ import { Icon, PageHeader } from '../../ui';
 import { useNow } from '../../ui/useNow';
 import { useHouseholdDay } from '../../data/day';
 import { useAnalysisData, type AnalysisData } from '../../data/analysis';
-import { fromDay, hhmmLabel, makeDay, toDay, type Day } from '../../domain/dates';
+import { addDays, fromDay, hhmmLabel, makeDay, toDay, type Day } from '../../domain/dates';
 import {
-  RANGE_LABEL,
+  PATTERN_DAYS,
   RHYTHM_FIRST_HOUR,
   RHYTHM_HOURS,
   cadenceWord,
-  countWord,
   dayRhythmSentence,
   departmentStats,
   heatLevels,
-  homeHealth,
+  homeFocus,
   monthHeat,
   monthSentence,
-  rangeFor,
+  recentTaskStats,
   rhythm,
+  slipOf,
   suggestionFor,
-  taskStats,
   weekRhythm,
   type Suggestion,
+  type TaskStats,
 } from '../../domain/analysis';
-import { MONTHS } from '../../domain/tasks';
+import { CADENCE_LABEL, MONTHS } from '../../domain/tasks';
 import { FeelingText, Ring, SectionTitle, SuggestionNote } from './parts';
-import { RANGES, suggestionKey, useDismissed, useRange } from './hooks';
+import { suggestionKey, useDismissed } from './hooks';
 import '../settings/plan-settings.css';
 import './analysis.css';
 
@@ -39,59 +39,93 @@ export function AnalysisScreen() {
   return <Analysis data={data} T={T} />;
 }
 
+/** A task that keeps slipping, with the gentlest fix that fits. */
+interface Attention {
+  stats: TaskStats;
+  /** A clear pattern: offer a gentler rhythm */
+  suggestion?: Suggestion;
+  kind: 'setAside' | 'late';
+}
+
 function Analysis({ data, T }: { data: AnalysisData; T: Day }) {
-  const [range, setRange] = useRange();
   const navigate = useNavigate();
   const dismissed = useDismissed();
-  const { from, to } = rangeFor(range, T, data.cal);
+  const from = addDays(T, -PATTERN_DAYS);
 
-  const stats = useMemo(() => taskStats(data, from, to), [data, from, to]);
+  const stats = useMemo(() => recentTaskStats(data), [data]);
   const depts = useMemo(() => departmentStats(stats, data.departments), [stats, data.departments]);
-  const health = homeHealth(depts, range);
-  const r = useMemo(() => rhythm(data, from, to), [data, from, to]);
-  const suggestion = stats
-    .map(suggestionFor)
-    .find((s): s is Suggestion => !!s && !dismissed.isHidden(suggestionKey(s)));
+  const home = homeFocus(depts);
+  const r = useMemo(() => rhythm(data, from, T), [data, from, T]);
+  const deptName = (id: string) => data.departments.find((d) => d.id === id)?.name ?? '';
+
+  // Up to three tasks that keep slipping: clear patterns first
+  const attention: Attention[] = [];
+  for (const s of stats) {
+    const sug = suggestionFor(s);
+    if (sug && !dismissed.isHidden(suggestionKey(sug))) attention.push({ stats: s, suggestion: sug, kind: sug.kind });
+  }
+  for (const s of stats) {
+    if (attention.some((a) => a.stats === s)) continue;
+    const kind = slipOf(s);
+    if ((kind === 'setAside' || kind === 'late') && !dismissed.isHidden(`${s.task.id}:slip`)) attention.push({ stats: s, kind });
+  }
 
   return (
     <main className="screen analysis">
       <PageHeader title="Analysis" subtitle="A calm look at how your home is running" />
 
       <div className="screen__body">
-        <div className="segmented an-range" role="radiogroup" aria-label="Look back over">
-          {RANGES.map((x) => (
-            <button
-              key={x}
-              type="button"
-              role="radio"
-              aria-checked={range === x}
-              className={range === x ? 'segmented__item is-selected' : 'segmented__item'}
-              onClick={() => setRange(x)}
-            >
-              {RANGE_LABEL[x]}
-            </button>
-          ))}
-        </div>
-
         <section className="health-card" aria-labelledby="health-title">
           <p className="health-card__kicker">
             <Icon name="sprout" size={20} />
-            Home health · this {range}
+            Where your time is best spent
           </p>
           <h2 id="health-title" className="health-card__title">
-            {health.title}
+            {home.title}
           </h2>
-          <p className="health-card__body">{health.body}</p>
+          {home.empty && <p className="health-card__body">Check off a few tasks on Today and this will fill in.</p>}
+          {home.focus.length > 0 && (
+            <>
+              <p className="health-card__body">
+                If you have some spare time, {home.focus.length > 1 ? 'these would' : 'this would'} feel it most:
+              </p>
+              <div className="focus-chips">
+                {home.focus.map((d) => (
+                  <Link key={d.department.id} to={`/analysis/department/${d.department.id}`} className="focus-chip">
+                    {d.department.name}
+                    <Icon name="chevron-right" size={16} />
+                  </Link>
+                ))}
+              </div>
+            </>
+          )}
         </section>
 
-        <SectionTitle title="How each department is feeling" subtitle="Tap a department for a closer look" />
+        {attention.length > 0 && (
+          <>
+            <SectionTitle title="Small changes that could help" />
+            <div className="slip-list">
+              {attention.slice(0, 3).map((a) => (
+                <AttentionCard
+                  key={a.stats.task.id}
+                  a={a}
+                  dept={deptName(a.stats.task.departmentId)}
+                  onKeep={() => dismissed.keep(a.suggestion ? suggestionKey(a.suggestion) : `${a.stats.task.id}:slip`)}
+                  onOpen={(to) => navigate(to)}
+                />
+              ))}
+            </div>
+          </>
+        )}
+
+        <SectionTitle title="Departments" subtitle="Tap one for a closer look" />
         <div className="dept-grid">
           {depts.map((d) => (
             <Link
               key={d.department.id}
-              to={`/analysis/department/${d.department.id}${range === 'season' ? '' : `?range=${range}`}`}
+              to={`/analysis/department/${d.department.id}`}
               className={d.feeling === 'reset' ? 'dept-tile is-reset' : 'dept-tile'}
-              aria-label={`${d.department.name}: ${d.score === null ? 'not enough yet' : `${d.score}, ${d.feeling === 'reset' ? 'ready for a reset' : d.feeling}`}`}
+              aria-label={`${d.department.name}: ${d.feeling === null ? 'not enough yet' : d.feeling === 'reset' ? 'ready for a reset' : d.feeling}`}
             >
               <Ring score={d.score} feeling={d.feeling} />
               <span className="dept-tile__name">{d.department.name}</span>
@@ -99,66 +133,65 @@ function Analysis({ data, T }: { data: AnalysisData; T: Day }) {
             </Link>
           ))}
         </div>
-        <p className="an-caption">
-          The fuller the ring, the more of this {range} found its rhythm. A gentle guide, not a grade.
-        </p>
 
-        <SectionTitle title="Fine-tuning your system" subtitle="Small adjustments that fit your home better" />
-        {suggestion ? (
-          <section className="suggest-card" aria-labelledby="suggest-title">
-            <p className="suggest-card__kicker">
-              <span className="suggest-card__icon">
-                <Icon name="leaf" size={20} />
-              </span>
-              A gentle suggestion
-            </p>
-            <h3 id="suggest-title" className="suggest-card__title">
-              Would “{suggestion.task.name}” fit better as a {cadenceWord(suggestion.to)} task?
-            </h3>
-            <p className="suggest-card__body">{suggestionBody(suggestion)}</p>
-            <button
-              type="button"
-              className="save-button suggest-card__primary"
-              onClick={() => navigate(`/plan/tasks/${suggestion.task.id}?suggest=${suggestion.to}&why=${suggestion.kind}`)}
-            >
-              Make it {cadenceWord(suggestion.to)}
-            </button>
-            <div className="suggest-card__row">
-              <button type="button" className="suggest-card__keep" onClick={() => dismissed.keep(suggestionKey(suggestion))}>
-                Keep it {cadenceWord(suggestion.task.cadence)}
-              </button>
-              <button type="button" className="suggest-card__later" onClick={() => dismissed.notNow(suggestionKey(suggestion))}>
-                Not now
-              </button>
-            </div>
-          </section>
-        ) : (
-          <p className="an-quiet-card">Nothing to fine-tune right now.</p>
-        )}
-        <p className="an-caption">Suggestions only appear when a pattern is clear.</p>
-
-        <SectionTitle title="Your daily rhythm" subtitle="How a typical day in your household unfolds" />
+        <SectionTitle title="Your patterns" />
         {r.total < 5 ? (
-          <p className="an-quiet-card">Your rhythm will show here after a couple of weeks of check-offs on Today.</p>
+          <p className="an-quiet-card">Your patterns will show here after a couple of weeks of check-offs on Today.</p>
         ) : (
           <DailyRhythm r={r} />
         )}
-
-        <SectionTitle title="Your monthly rhythm" subtitle="How the work flows across a typical month" />
-        <MonthlyRhythm data={data} T={T} from={from} to={to} />
+        <MonthlyRhythm data={data} T={T} from={addDays(T, -90)} to={T} />
       </div>
     </main>
   );
 }
 
-function suggestionBody(s: Suggestion) {
-  const from = cadenceWord(s.task.cadence);
-  const unit = { daily: 'days', weekly: 'weeks', monthly: 'months', seasonal: 'seasons', yearly: 'years' }[s.task.cadence];
-  const why =
-    s.kind === 'setAside'
-      ? `It has been set aside ${countWord(s.count).replace('once', 'one time')} in a row`
-      : `It ran late in ${s.count} of the last 4 ${unit}`;
-  return `${why}, which often means a ${from} rhythm is more than your home needs right now. A ${cadenceWord(s.to)} slot could take the pressure off, and nothing changes until you choose.`;
+function AttentionCard({
+  a,
+  dept,
+  onKeep,
+  onOpen,
+}: {
+  a: Attention;
+  dept: string;
+  onKeep: () => void;
+  onOpen: (to: string) => void;
+}) {
+  const { task } = a.stats;
+  const lead = a.kind === 'setAside' ? 'Keeps getting set aside.' : 'Keeps getting pushed.';
+  const text = a.suggestion
+    ? `${lead} Would it fit better as a ${cadenceWord(a.suggestion.to)} task?`
+    : `${lead} Giving it a set day on a lighter day could help.`;
+  return (
+    <section className="slip-card">
+      <div className="slip-card__head">
+        <h3>{task.name}</h3>
+      </div>
+      <p className="slip-card__cadence">
+        {dept ? `${dept} · ` : ''}
+        {CADENCE_LABEL[task.cadence]}
+      </p>
+      <p className="slip-card__detail">{text}</p>
+      <div className="slip-card__actions">
+        {a.suggestion ? (
+          <button
+            type="button"
+            className="save-button slip-card__btn"
+            onClick={() => onOpen(`/plan/tasks/${task.id}?suggest=${a.suggestion!.to}&why=${a.suggestion!.kind}`)}
+          >
+            Make it {cadenceWord(a.suggestion.to)}
+          </button>
+        ) : (
+          <button type="button" className="save-button slip-card__btn" onClick={() => onOpen(`/analysis/give/${task.id}`)}>
+            Give it a day
+          </button>
+        )}
+        <button type="button" className="slip-card__secondary" onClick={onKeep}>
+          Keep it as is
+        </button>
+      </div>
+    </section>
+  );
 }
 
 /* ---------- Daily rhythm (Figma 16:3363) ---------- */

@@ -6,7 +6,8 @@ import {
   balanceSuggestion,
   departmentStats,
   feelingOf,
-  homeHealth,
+  homeFocus,
+  recentTaskStats,
   monthBalance,
   rhythm,
   scoreOf,
@@ -104,14 +105,22 @@ describe('department stats and home health', () => {
     const stats = taskStats(input([t, missed], occs), '2026-09-01', '2026-10-31');
     const [d] = departmentStats(stats, [dept]);
     expect(d.feeling).toBe('reset');
-    const h = homeHealth([d], 'season');
-    expect(h.title).toBe('Your home could use a little room');
-    expect(h.body).toContain('Grounds could use a little room next');
-    expect(h.body).not.toMatch(/overdue|fail|behind/i);
+    const h = homeFocus([d]);
+    expect(h.title).toBe('Your home could use a little attention');
+    expect(h.focus.map((f) => f.department.name)).toEqual(['Grounds']);
   });
 
-  it('says there is nothing to judge yet with no history', () => {
-    expect(homeHealth(departmentStats([], [dept]), 'month').title).toBe('Your rhythm will show here soon');
+  it('says there is nothing to go on yet with no history', () => {
+    expect(homeFocus(departmentStats([], [dept])).empty).toBe(true);
+  });
+
+  it('looks at each task over its own recent stretch', () => {
+    const t = task({});
+    const occs = ['2026-09-06', '2026-09-13', '2026-09-20', '2026-09-27', '2026-10-04'].map((w) => occ(t, w, { status: 'done' }));
+    const [s] = recentTaskStats({ ...input([t], occs), today: '2026-10-31' });
+    // Eight weeks back from Oct 31 reaches Sep 5: the Sep 6 week counts, nothing before it
+    expect(s.judged[0].inst.start >= '2026-09-05' || s.judged[0].inst.end >= '2026-09-05').toBe(true);
+    expect(s.tally.onTime).toBe(5);
   });
 });
 
