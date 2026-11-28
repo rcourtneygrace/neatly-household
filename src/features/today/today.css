@@ -713,3 +713,8 @@
   font-size: var(--fs-caption);
   color: var(--text-muted);
 }
+
+.closed-hero__early {
+  margin-top: 14px;
+  min-width: 180px;
+}

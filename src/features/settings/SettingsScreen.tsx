@@ -7,7 +7,7 @@ import { endVacation, startVacation } from '../../data/today';
 import { Toggle } from '../../ui/controls';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../data/db';
-import { toDay } from '../../domain/dates';
+import { currentHouseholdDay } from '../../data/day';
 import { exportBackup, importBackup, shareOrDownload } from '../../data/backup';
 import { loadSampleRecords } from '../../data/sampleRecords';
 import { loadSuggestedTasks } from '../../data/suggestedTasks';
@@ -70,7 +70,7 @@ export function SettingsScreen() {
           title="Vacation mode"
           hint="Nothing will count against you while you're away."
           checked={onVacation}
-          onChange={(on) => (on ? startVacation(toDay(new Date())) : endVacation(toDay(new Date())))}
+          onChange={async (on) => (on ? startVacation(await currentHouseholdDay()) : endVacation(await currentHouseholdDay()))}
         />
       </section>
 
@@ -95,7 +95,10 @@ export function SettingsScreen() {
 
       <section className="settings__group">
         <h2 className="settings__heading">Business hours</h2>
-        <p className="settings__hint">Opening shows in the morning. Closing appears an hour before close.</p>
+        <p className="settings__hint">
+          Each day starts at the open time with Opening. Closing appears an hour before close and stays until the next
+          open time, so a late night still counts as that day.
+        </p>
         <div className="settings__hours">
           <HourField label="Weekdays open" value={hours.weekdayOpen} onChange={(v) => setHour('weekdayOpen', v)} />
           <HourField label="Weekdays close" value={hours.weekdayClose} onChange={(v) => setHour('weekdayClose', v)} />

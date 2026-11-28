@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Icon, PageHeader } from '../../ui';
 import { useNow } from '../../ui/useNow';
+import { useHouseholdDay } from '../../data/day';
 import { useAnalysisData, type AnalysisData } from '../../data/analysis';
 import { fromDay, hhmmLabel, makeDay, toDay, type Day } from '../../domain/dates';
 import {
@@ -32,7 +33,7 @@ import './analysis.css';
 /** Analysis: home health (Figma 16:3183). */
 export function AnalysisScreen() {
   const now = useNow();
-  const T = toDay(now);
+  const T = useHouseholdDay(now) ?? toDay(now);
   const data = useAnalysisData(T);
   if (!data) return <main className="screen" />;
   return <Analysis data={data} T={T} />;

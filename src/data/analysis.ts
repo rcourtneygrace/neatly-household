@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, nowISO, occurrenceId, stamp } from './db';
+import { currentHouseholdDay } from './day';
 import type { Department, Household, Task } from './types';
 import { addDays, type Day } from '../domain/dates';
 import { buildToday, instancesAround, type Instance, type PlanCalendar } from '../domain/schedule';
@@ -66,8 +67,7 @@ export async function giveItADay(task: Task, day: Day, cal: PlanCalendar): Promi
 
 /** Adjust monthly tasks: move the chosen tasks to new days of the month. */
 export async function moveMonthlyTasks(moves: { taskId: string; toDay: number }[]): Promise<void> {
-  const today = new Date();
-  const activeSince = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const activeSince = await currentHouseholdDay();
   await db.transaction('rw', db.tasks, async () => {
     for (const m of moves) await db.tasks.update(m.taskId, { timingValue: m.toDay, activeSince, updatedAt: nowISO() });
   });

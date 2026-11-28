@@ -1,6 +1,6 @@
 import type { Cadence, DayLog, Department, Occurrence, Task } from '../data/types';
 import { addDays, fromDay, toDay, weekdayOf, type Day } from './dates';
-import { inVacation, instancesAround, occKey, periodFor, type Instance, type PlanCalendar, type VacationSpan } from './schedule';
+import { doneDay, inVacation, instancesAround, occKey, periodFor, type Instance, type PlanCalendar, type VacationSpan } from './schedule';
 import { CADENCE_LABEL, WEEKDAYS } from './tasks';
 
 /**
@@ -71,7 +71,7 @@ export function judge(
   if (occ?.status !== 'done' && inVacation(inst.end, vacations, today)) return 'skip';
   if (occ?.status === 'deferred') return 'deferred';
   if (occ?.status === 'done') {
-    const on = occ.completedAt ? toDay(new Date(occ.completedAt)) : inst.end;
+    const on = occ.completedAt ? doneDay(occ) : inst.end;
     return on <= inst.end ? 'onTime' : 'late';
   }
   if (occ?.status === 'carriedOver') return 'late';
@@ -284,7 +284,7 @@ export function rhythm(input: AnalysisInput, from: Day, to: Day): Rhythm {
   for (const o of input.occurrences) {
     if (o.status !== 'done' || !o.completedAt) continue;
     const at = new Date(o.completedAt);
-    const day = toDay(at);
+    const day = doneDay(o);
     if (day < from || day > to) continue;
     total++;
     const h = at.getHours() - RHYTHM_FIRST_HOUR;
@@ -417,7 +417,7 @@ export function monthHeat(input: AnalysisInput, from: Day, to: Day): number[] {
   const heat = new Array(32).fill(0);
   for (const o of input.occurrences) {
     if (o.status !== 'done' || !o.completedAt) continue;
-    const d = toDay(new Date(o.completedAt));
+    const d = doneDay(o);
     if (d < from || d > to) continue;
     const task = input.tasks.find((t) => t.id === o.taskId);
     if (!task || task.cadence === 'daily') continue;

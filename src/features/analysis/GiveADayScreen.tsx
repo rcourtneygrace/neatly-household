@@ -3,6 +3,7 @@ import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { Icon } from '../../ui';
 import { goBack } from '../../ui/goBack';
 import { useNow } from '../../ui/useNow';
+import { useHouseholdDay } from '../../data/day';
 import { giveItADay, useAnalysisData, type AnalysisData } from '../../data/analysis';
 import type { Task } from '../../data/types';
 import { addDays, fromDay, makeDay, shortDate, toDay, type Day } from '../../domain/dates';
@@ -20,7 +21,7 @@ import './analysis.css';
  */
 export function GiveADayScreen({ mode = 'give' }: { mode?: 'give' | 'push' }) {
   const now = useNow();
-  const T = toDay(now);
+  const T = useHouseholdDay(now) ?? toDay(now);
   const data = useAnalysisData(T);
   const { taskId } = useParams();
   if (!data) return null;

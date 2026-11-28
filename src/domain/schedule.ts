@@ -216,7 +216,12 @@ function activeSince(task: Task): Day {
 }
 
 function completedOn(o: Occurrence | undefined): Day | null {
-  return o?.status === 'done' && o.completedAt ? toDay(new Date(o.completedAt)) : null;
+  return o?.status === 'done' && o.completedAt ? doneDay(o) : null;
+}
+
+/** The household day a completion counts for. Older rows only have the time. */
+export function doneDay(o: Occurrence): Day {
+  return o.completedOn ?? toDay(new Date(o.completedAt!));
 }
 
 export function inVacation(day: Day, vacations: VacationSpan[] | undefined, today: Day): boolean {

@@ -60,9 +60,13 @@ async function upsert(taskId: string, inst: Instance, changes: Partial<Occurrenc
 }
 
 /** Check a task off (or un-check it). A carried-over row also records the missed instance as carried over. */
-export async function setDone(item: TodayItem, done: boolean): Promise<void> {
+export async function setDone(item: TodayItem, done: boolean, day: Day): Promise<void> {
   await db.transaction('rw', db.occurrences, async () => {
-    await upsert(item.task.id, item.inst, done ? { status: 'done', completedAt: nowISO() } : { status: 'open', completedAt: null });
+    await upsert(
+      item.task.id,
+      item.inst,
+      done ? { status: 'done', completedAt: nowISO(), completedOn: day } : { status: 'open', completedAt: null, completedOn: null },
+    );
     if (item.carriedFrom) {
       await upsert(item.task.id, item.carriedFrom, { status: done ? 'carriedOver' : 'open' });
     }
@@ -229,6 +233,14 @@ export async function completeClosing(date: Day, counts: { planned: number; comp
       tasksCompleted: counts.completed,
       updatedAt: nowISO(),
     });
+  });
+}
+
+/** "Open early": start the calendar day's household day before its opening time. */
+export async function startDayEarly(date: Day): Promise<void> {
+  await db.transaction('rw', db.dayLogs, async () => {
+    const log = await dayLog(date);
+    await db.dayLogs.update(log.id, { startedEarly: true, updatedAt: nowISO() });
   });
 }
 

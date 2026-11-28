@@ -1,8 +1,8 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, nowISO, stamp } from './db';
+import { currentHouseholdDay } from './day';
 import type { Department, RoutineTemplate, Task } from './types';
 import { cleanTiming, timingIsComplete, type Timing } from '../domain/tasks';
-import { toDay } from '../domain/dates';
 
 /* ---------- Reading ---------- */
 
@@ -55,7 +55,7 @@ export async function saveTask(draft: TaskDraft, existingId?: string): Promise<s
     paused: draft.paused,
     ...timing,
   };
-  const today = toDay(new Date());
+  const today = await currentHouseholdDay();
   if (existingId) {
     const before = await db.tasks.get(existingId);
     // Resuming a paused task, or changing when it happens, starts it fresh: nothing earlier is carried over.

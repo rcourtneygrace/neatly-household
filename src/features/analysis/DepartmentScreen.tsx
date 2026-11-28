@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { Icon } from '../../ui';
 import { goBack } from '../../ui/goBack';
 import { useNow } from '../../ui/useNow';
+import { useHouseholdDay } from '../../data/day';
 import { useAnalysisData, type AnalysisData } from '../../data/analysis';
 import { toDay, type Day } from '../../domain/dates';
 import {
@@ -31,7 +32,7 @@ import './analysis.css';
 /** Analysis: department detail (Figma 16:3597). */
 export function DepartmentScreen() {
   const now = useNow();
-  const T = toDay(now);
+  const T = useHouseholdDay(now) ?? toDay(now);
   const data = useAnalysisData(T);
   const { id } = useParams();
   if (!data) return <main className="screen" />;

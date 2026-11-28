@@ -38,17 +38,18 @@ const occ = (key: string) => db.occurrences.where('[taskId+periodStart]').equals
 
 describe('Today actions', () => {
   it('checking off a carried-over row records both instances, and un-checking reverts', async () => {
-    await setDone(item, true);
+    await setDone(item, true, '2026-10-15');
     expect((await occ('2026-10-11'))?.status).toBe('done');
     expect((await occ('2026-10-11'))?.completedAt).toBeTruthy();
+    expect((await occ('2026-10-11'))?.completedOn).toBe('2026-10-15');
     expect((await occ('2026-10-04'))?.status).toBe('carriedOver');
-    await setDone(item, false);
+    await setDone(item, false, '2026-10-15');
     expect((await occ('2026-10-11'))?.status).toBe('open');
     expect(await db.occurrences.count()).toBe(2); // updated in place, not duplicated
   });
 
   it('skip sets the instance (and the missed one) aside with a reason, and Undo restores it', async () => {
-    await setDone(item, false);
+    await setDone(item, false, '2026-10-15');
     const snap = await skipItem(item, 'Weather');
     const o = await occ('2026-10-11');
     expect(o?.status).toBe('deferred');

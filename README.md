@@ -83,3 +83,9 @@ All data stays on the phone (IndexedDB). Every row has `id/createdAt/updatedAt/d
 - Occurrences and day logs use the same id on every phone (`occurrenceId`, `dayLogId`) so they merge.
 - On iPhone, Safari and the Home Screen app keep separate data, so the join page explains pasting the invite in Settings.
 - Not synced: whole-table clears (backup restore only sends the restored rows), and localStorage preferences.
+
+## The household day
+
+A day runs from its opening time to the next opening time (`src/domain/hours.ts`), not midnight to midnight.
+Before the open time it is still the evening before: its Closing stays up, and check-offs count for it
+(`Occurrence.completedOn`). "Open early" (`DayLog.startedEarly`) starts the new day before its open time.

@@ -94,6 +94,8 @@ export interface Occurrence extends SyncFields {
   pinned?: boolean;
   status: OccurrenceStatus;
   completedAt?: ISODateTime | null;
+  /** The household day it was checked off (Today's day, which runs opening to opening) */
+  completedOn?: ISODate | null;
   /** Skip reason ("deferred" in code, "Skip" on screen); null when skipped without a reason */
   deferReason?: string | null;
 }
@@ -112,6 +114,8 @@ export interface DayLog extends SyncFields {
   dayDismissed?: boolean;
   /** The day's list as built: locked (fixed for today) or chosen */
   picks?: { taskId: ID; kind: 'locked' | 'chosen' }[];
+  /** "Open early": this day started before its opening time */
+  startedEarly?: boolean;
 }
 
 export interface VacationPeriod extends SyncFields {

@@ -12,13 +12,16 @@ import {
   reopenDay,
   setDone,
   skipItem,
+  startDayEarly,
   undo,
   useTodayData,
   type TodayData,
   type UndoSnapshot,
 } from '../../data/today';
 import type { RoutineTemplate } from '../../data/types';
-import { addDays, clockTime, hhmmLabel, longDate, minutesOf, toDay, weekdayOf, type Day } from '../../domain/dates';
+import { useHouseholdDay } from '../../data/day';
+import { closingTime, hoursOn } from '../../domain/hours';
+import { addDays, clockTime, fromDay, hhmmLabel, longDate, toDay, type Day } from '../../domain/dates';
 import { buildToday, inVacation, plainMeta, type TodayItem, type TodayView } from '../../domain/schedule';
 import { BuildYourDay } from './BuildYourDay';
 import { SkipSheet, TaskActionsSheet } from './TaskActionsSheet';
@@ -26,22 +29,19 @@ import { MetaLine, TagPill } from './rows';
 import './today.css';
 import './task-sheet.css';
 
-/** Closing shows this long before the close time (Settings → Business hours). */
-const CLOSING_LEAD_MINUTES = 60;
 
 /** Today (Figma 16:2014 opening, 16:2187 daily complete, 16:1694 evening, 5:2 / 5:88 after hours). */
 export function TodayScreen() {
   const now = useNow();
-  const T = toDay(now);
-  const data = useTodayData(T);
-  if (!data) return <main className="screen" />;
+  // The household day runs from opening time to the next opening, not midnight to midnight
+  const T = useHouseholdDay(now);
+  const data = useTodayData(T ?? toDay(now));
+  if (!data || !T) return <main className="screen" />;
   return <Today data={data} now={now} T={T} />;
 }
 
 function hoursFor(day: Day, data: TodayData) {
-  const h = data.household.businessHours;
-  const weekend = [0, 6].includes(weekdayOf(day));
-  return weekend ? { open: h.weekendOpen, close: h.weekendClose } : { open: h.weekdayOpen, close: h.weekdayClose };
+  return hoursOn(day, data.household.businessHours);
 }
 
 function useTodayView(data: TodayData, T: Day): { view: TodayView; openedDays: Set<Day> } {
@@ -80,9 +80,8 @@ function Today({ data, now, T }: { data: TodayData; now: Date; T: Day }) {
   const log = data.dayLogs.find((l) => l.date === T);
   const opened = log?.openingStatus === 'done';
   const closed = log?.closingStatus === 'done';
-  const hours = hoursFor(T, data);
-  const closingTime = minutesOf(hours.close) - CLOSING_LEAD_MINUTES;
-  const showClosing = minutesOf(now) >= closingTime;
+  // Closing: from an hour before close until the next opening
+  const showClosing = closingTime(now, T, household.businessHours);
   const away = inVacation(T, data.vacations, T) && data.vacations.some((v) => v.endDate === null);
   const welcome = !away ? data.vacations.find((v) => v.endDate !== null && !v.welcomeSeen) : undefined;
 
@@ -103,7 +102,7 @@ function Today({ data, now, T }: { data: TodayData; now: Date; T: Day }) {
   if (away) {
     return (
       <main className="screen today">
-        <TodayHeader name={household.name} now={now} onSettings={() => navigate('/settings')} />
+        <TodayHeader name={household.name} now={now} T={T} onSettings={() => navigate('/settings')} />
         <div className="today__body">
           <section className="away-card" aria-labelledby="away-title">
             <span className="closed-hero__badge" aria-hidden>
@@ -124,7 +123,7 @@ function Today({ data, now, T }: { data: TodayData; now: Date; T: Day }) {
 
   return (
     <main className="screen today">
-      <TodayHeader name={household.name} now={now} onSettings={() => navigate('/settings')} />
+      <TodayHeader name={household.name} now={now} T={T} onSettings={() => navigate('/settings')} />
 
       {welcome && (
         <div className="today__body today__body--top">
@@ -138,7 +137,7 @@ function Today({ data, now, T }: { data: TodayData; now: Date; T: Day }) {
       )}
 
       {closed ? (
-        <ClosedView data={data} view={view} T={T} openedDays={openedDays} deptName={deptName} />
+        <ClosedView data={data} view={view} T={T} now={now} openedDays={openedDays} deptName={deptName} />
       ) : (
         <div className="today__body">
           {!opened && !showClosing && (
@@ -285,7 +284,7 @@ function UndoToast({ text, onUndo, onDone }: { text: string; onUndo: () => void;
 
 /* ---------- Header (Figma 16:2019) ---------- */
 
-function TodayHeader({ name, now, onSettings }: { name: string; now: Date; onSettings: () => void }) {
+function TodayHeader({ name, now, T, onSettings }: { name: string; now: Date; T: Day; onSettings: () => void }) {
   return (
     <header>
       <Wordmark />
@@ -299,7 +298,8 @@ function TodayHeader({ name, now, onSettings }: { name: string; now: Date; onSet
         </button>
       </div>
       <p className="today-header__date">
-        {longDate(now)} · {clockTime(now)}
+        {/* The household day's date: after midnight it is still last night until opening */}
+        {longDate(fromDay(T))} · {clockTime(now)}
       </p>
     </header>
   );
@@ -364,7 +364,7 @@ function OpenedBanner({ at }: { at?: string | null }) {
 
 /* ---------- Task rows ---------- */
 
-function CheckButton({ item }: { item: TodayItem }) {
+function CheckButton({ item, T }: { item: TodayItem; T: Day }) {
   return (
     <button
       type="button"
@@ -372,7 +372,7 @@ function CheckButton({ item }: { item: TodayItem }) {
       aria-checked={item.done}
       aria-label={item.task.name}
       className={item.done ? 'check is-done' : 'check'}
-      onClick={() => setDone(item, !item.done)}
+      onClick={() => setDone(item, !item.done, T)}
     >
       {item.done && <Icon name="check" size={14} />}
     </button>
@@ -392,7 +392,7 @@ function TaskCheckRow({
 }) {
   return (
     <div className={item.priority ? 'task-check is-priority' : 'task-check'}>
-      <CheckButton item={item} />
+      <CheckButton item={item} T={T} />
       <button type="button" className="row-text row-text--button" onClick={onMore} disabled={!onMore || item.done}>
         <span className={item.done ? 'row-text__name is-done' : 'row-text__name'}>{item.task.name}</span>
         {item.done ? (
@@ -465,12 +465,14 @@ function ClosedView({
   data,
   view,
   T,
+  now,
   openedDays,
   deptName,
 }: {
   data: TodayData;
   view: TodayView;
   T: Day;
+  now: Date;
   openedDays: Set<Day>;
   deptName: (id: string) => string;
 }) {
@@ -510,8 +512,14 @@ function ClosedView({
         </span>
         <p className="closed-hero__title">Closed for the day. Well run.</p>
         {log?.closingAt && <p className="closed-hero__sub">Closing finished at {clockTime(new Date(log.closingAt))}</p>}
+        {/* After midnight, before the opening time: start the new day now */}
+        {toDay(now) > T && (
+          <button type="button" className="outline-button closed-hero__early" onClick={() => startDayEarly(toDay(now))}>
+            Open early
+          </button>
+        )}
         <button type="button" className="closed-hero__reopen" onClick={() => reopenDay(T)}>
-          Reopen today
+          {toDay(now) > T ? 'Reopen last night' : 'Reopen today'}
         </button>
       </div>
 
