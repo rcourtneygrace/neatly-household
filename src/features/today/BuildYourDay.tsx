@@ -8,8 +8,8 @@ import { MetaLine, TagPill } from './rows';
 
 const STEPS: Cadence[] = ['weekly', 'monthly', 'seasonal', 'yearly'];
 const PERIOD_WORD: Record<string, string> = { weekly: 'week', monthly: 'month', seasonal: 'season', yearly: 'year' };
-const FIRST_ROWS = 5;
-const CARD_ROWS = 4;
+const STEP_TITLE: Record<string, string> = { weekly: 'This week', monthly: 'This month', seasonal: 'This season', yearly: 'This year' };
+const FIRST_ROWS = 6;
 /** After about three weeks of Build Your Day history, rank by what was picked before. */
 const HISTORY_DAYS = 21;
 
@@ -91,7 +91,8 @@ export function BuildYourDay({
   const firstStep = steps.findIndex((s) => s.items.length > 0);
   const [step, setStep] = useState(firstStep === -1 ? 0 : firstStep);
   const [showAllRows, setShowAllRows] = useState(false);
-  const [showAllCard, setShowAllCard] = useState(false);
+  /** The "Your day" review, opened from the count in the footer */
+  const [reviewing, setReviewing] = useState(false);
 
   const finish = (set: Set<string>) =>
     onDone(
@@ -112,6 +113,7 @@ export function BuildYourDay({
   });
 
   const nextStep = steps.findIndex((s, i) => i > step && s.items.length > 0);
+  const prevStep = steps.map((s, i) => (i < step && s.items.length > 0 ? i : -1)).filter((i) => i >= 0).pop() ?? -1;
   const isLast = nextStep === -1;
   const current = steps[step];
   const total = locked.length + view.daily.length + picked.size;
@@ -123,172 +125,170 @@ export function BuildYourDay({
       else n.add(id);
       return n;
     });
-  const advance = (set: Set<string>) => {
+  const goTo = (i: number) => {
     setShowAllRows(false);
-    if (isLast) finish(set);
-    else setStep(nextStep);
+    setReviewing(false);
+    setStep(i);
   };
-  const skip = () => {
-    const n = new Set(picked);
-    for (const i of current.items) n.delete(i.task.id);
-    setPicked(n);
-    advance(n);
-  };
+  const advance = () => (isLast ? finish(picked) : goTo(nextStep));
 
   if (firstStep === -1 && carried.length === 0) {
     return (
       <Shell onClose={close}>
-        <p className="kicker">Build your day</p>
-        <h2 id="byd-title" className="byd__title">
-          Nothing to choose today
-        </h2>
-        <p className="byd__intro">
-          Everything is either done or not due yet. Your daily tasks and anything fixed for today are on your list.
-        </p>
+        <div className="byd__head">
+          <p className="byd__step">Build your day</p>
+          <h2 id="byd-title" className="byd__title">
+            Nothing to choose today
+          </h2>
+          <p className="byd__intro">
+            Everything is either done or not due yet. Your daily tasks and anything fixed for today are on your list.
+          </p>
+        </div>
         <div className="byd__spacer" />
-        <button type="button" className="save-button" onClick={() => finish(picked)}>
-          Done
-        </button>
+        <div className="byd__footer">
+          <button type="button" className="save-button byd__next" onClick={() => finish(picked)}>
+            Done
+          </button>
+        </div>
       </Shell>
     );
   }
 
-  // "Your day so far": Already on today (locked, with a lock, no remove) then Your picks
-  const lockedRows: { key: string; name: string; dept?: string }[] = [
-    ...locked.map((i) => ({ key: i.task.id, name: i.task.name, dept: deptName(i.task.departmentId) })),
+  // "Your day": fixed for today (with a lock) and the picks so far, opened from the footer
+  const lockedRows: { key: string; name: string; meta?: string }[] = [
+    ...locked.map((i) => ({ key: i.task.id, name: i.task.name, meta: deptName(i.task.departmentId) })),
     ...(view.daily.length
-      ? [{ key: 'daily', name: `${view.daily.length} daily ${view.daily.length === 1 ? 'task' : 'tasks'}` }]
+      ? [{ key: 'daily', name: `${view.daily.length} daily ${view.daily.length === 1 ? 'task' : 'tasks'}`, meta: 'Every day' }]
       : []),
   ];
   const pickRows = all.filter((i) => picked.has(i.task.id));
-  const pickGroups = STEPS.map((c) => ({ cadence: c, items: pickRows.filter((i) => i.task.cadence === c) })).filter(
-    (g) => g.items.length > 0,
-  );
-  const cardTotal = lockedRows.length + pickRows.length;
-  const limit = showAllCard ? Infinity : CARD_ROWS;
-  const lockedShown = lockedRows.slice(0, limit);
-  const shownGroups: { cadence: Cadence; total: number; items: TodayItem[] }[] = [];
-  {
-    let left = limit - lockedShown.length;
-    for (const g of pickGroups) {
-      if (left <= 0) break;
-      const items = g.items.slice(0, left);
-      left -= items.length;
-      shownGroups.push({ cadence: g.cadence, total: g.items.length, items });
-    }
-  }
-
   const rows = showAllRows ? current.items : current.items.slice(0, FIRST_ROWS);
+  const hasPriority = current.items.some((i) => i.priority);
 
   return (
     <Shell onClose={close}>
-      <ol className="byd__progress" aria-label={`Step ${step + 1} of 4`}>
-        {STEPS.map((c, i) => (
-          <li key={c} className={i <= step ? 'is-reached' : undefined} aria-current={i === step ? 'step' : undefined}>
-            <span className="byd__bar" />
-            <span className="byd__step-label">{CADENCE_LABEL[c]}</span>
-          </li>
-        ))}
-      </ol>
-
-      <p className="kicker">Build your day · Step {step + 1} of 4</p>
-      <h2 id="byd-title" className="byd__title">
-        Choose {CADENCE_LABEL[current.cadence]} Tasks
-      </h2>
-      <p className="byd__intro">
-        Pick any you want to tackle today. The rest stay in your {PERIOD_WORD[current.cadence]}. Carried-over tasks are marked
-        Priority.
-      </p>
-
-      <div className="byd__sofar" aria-live="polite">
-        <div className="byd__sofar-head">
-          <span>Your day so far</span>
-          <span>{total === 1 ? '1 task' : `${total} tasks`}</span>
+      <div className="byd__head">
+        <div className="byd__progress" role="progressbar" aria-label="Build your day" aria-valuemin={1} aria-valuemax={4} aria-valuenow={step + 1} aria-valuetext={`Step ${step + 1} of 4, ${CADENCE_LABEL[current.cadence]}`}>
+          {STEPS.map((c, i) => (
+            <span key={c} className={i <= step ? 'byd__bar is-reached' : 'byd__bar'} />
+          ))}
         </div>
-        {lockedShown.length > 0 && (
+        {reviewing ? (
           <>
-            <p className="kicker byd__sofar-kicker">Already on today</p>
-            {lockedShown.map((r) => (
-              <div key={r.key} className="byd__sofar-row">
-                <Icon name="lock" size={14} className="byd__lock" label="Fixed for today" />
-                <span className="byd__sofar-name">{r.name}</span>
-                {r.dept && <span className="byd__sofar-dept">{r.dept}</span>}
-              </div>
-            ))}
+            <h2 id="byd-title" className="byd__title">
+              Your day
+            </h2>
+            <p className="byd__intro">
+              {total} {total === 1 ? 'task' : 'tasks'} on today. Tap ✕ to take a pick off.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="byd__step">
+              Step {step + 1} of 4 · {CADENCE_LABEL[current.cadence]}
+            </p>
+            <h2 id="byd-title" className="byd__title">
+              {STEP_TITLE[current.cadence]}
+            </h2>
+            <p className="byd__intro">
+              Pick what you&rsquo;d like to do today. The rest stay for later this {PERIOD_WORD[current.cadence]}.
+              {hasPriority && ' Priority tasks were missed last time.'}
+            </p>
           </>
         )}
-        {shownGroups.length > 0 && <p className="kicker byd__sofar-kicker">Your picks</p>}
-        {shownGroups.map((g) => {
-          return (
-            <div key={g.cadence}>
-              <p className="byd__sofar-group">
-                {CADENCE_LABEL[g.cadence]} · {g.total}
-              </p>
-              {g.items.map((i) => (
-                <div key={i.task.id} className="byd__sofar-row">
-                  <span className={i.priority ? 'byd__dot is-priority' : 'byd__dot'} aria-hidden />
-                  <span className="byd__sofar-name">{i.task.name}</span>
-                  <span className="byd__sofar-dept">{i.carriedPick ? 'Carried over' : deptName(i.task.departmentId)}</span>
-                  <button
-                    type="button"
-                    className="byd__remove"
-                    aria-label={`Remove ${i.task.name}`}
-                    onClick={() => toggle(i.task.id)}
-                  >
-                    <Icon name="close" size={14} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          );
-        })}
-        {!showAllCard && cardTotal > CARD_ROWS && (
-          <button type="button" className="byd__showall" onClick={() => setShowAllCard(true)}>
-            Show all
-          </button>
+      </div>
+
+      <div className="byd__body">
+        {reviewing ? (
+          <div className="byd__review" aria-live="polite">
+            {lockedRows.length > 0 && <p className="byd__group">Already on today</p>}
+            {lockedRows.map((r) => (
+              <div key={r.key} className="byd__review-row">
+                <Icon name="lock" size={16} className="byd__lock" label="Fixed for today" />
+                <span className="byd__review-text">
+                  <span className="byd__review-name">{r.name}</span>
+                  {r.meta && <span className="byd__review-meta">{r.meta}</span>}
+                </span>
+              </div>
+            ))}
+            {pickRows.length > 0 && <p className="byd__group">Your picks</p>}
+            {pickRows.map((i) => (
+              <div key={i.task.id} className="byd__review-row">
+                <span className={i.priority ? 'byd__dot is-priority' : 'byd__dot'} aria-hidden />
+                <span className="byd__review-text">
+                  <span className="byd__review-name">{i.task.name}</span>
+                  <span className="byd__review-meta">
+                    {i.carriedPick ? 'Carried over' : `${deptName(i.task.departmentId)} · ${CADENCE_LABEL[i.task.cadence]}`}
+                  </span>
+                </span>
+                <button type="button" className="byd__remove" aria-label={`Remove ${i.task.name}`} onClick={() => toggle(i.task.id)}>
+                  <Icon name="close" size={18} />
+                </button>
+              </div>
+            ))}
+            {pickRows.length === 0 && <p className="byd__empty">No picks yet. Daily tasks and fixed tasks are already on.</p>}
+          </div>
+        ) : (
+          <div className="byd__list">
+            {rows.map((i) => {
+              const on = picked.has(i.task.id);
+              return (
+                <button
+                  key={i.task.id}
+                  type="button"
+                  role="checkbox"
+                  aria-checked={on}
+                  className={`byd__row${on ? ' is-on' : ''}`}
+                  onClick={() => toggle(i.task.id)}
+                >
+                  <span className="byd__box" aria-hidden>
+                    {on && <Icon name="check" size={16} />}
+                  </span>
+                  <span className="row-text">
+                    <span className="row-text__name">{i.task.name}</span>
+                    <MetaLine item={i} department={deptName(i.task.departmentId)} T={T} />
+                  </span>
+                  <TagPill tag={i.kind === 'offer' ? i.tag : i.priority ? 'priority' : null} />
+                </button>
+              );
+            })}
+            {!showAllRows && current.items.length > FIRST_ROWS && (
+              <button type="button" className="byd__showall" onClick={() => setShowAllRows(true)}>
+                Show {current.items.length - FIRST_ROWS} more
+              </button>
+            )}
+          </div>
         )}
       </div>
 
-      <div className="byd__list">
-        {rows.map((i) => {
-          const on = picked.has(i.task.id);
-          return (
-            <button
-              key={i.task.id}
-              type="button"
-              role="checkbox"
-              aria-checked={on}
-              className={`byd__row${on ? ' is-on' : ''}${i.priority && !on ? ' is-priority' : ''}`}
-              onClick={() => toggle(i.task.id)}
-            >
-              <span className="byd__box" aria-hidden>
-                {on && <Icon name="check" size={14} />}
-              </span>
-              <span className="row-text">
-                <span className="row-text__name">{i.task.name}</span>
-                <MetaLine item={i} department={deptName(i.task.departmentId)} T={T} />
-              </span>
-              <TagPill tag={i.kind === 'offer' ? i.tag : i.priority ? 'priority' : null} />
+      <div className="byd__footer">
+        <button
+          type="button"
+          className="byd__count"
+          aria-expanded={reviewing}
+          onClick={() => setReviewing((r) => !r)}
+        >
+          <span>
+            <strong>{total}</strong> on today
+          </span>
+          <Icon name={reviewing ? 'chevron-down' : 'chevron-up'} size={18} />
+        </button>
+        <div className="byd__nav">
+          {reviewing ? (
+            <button type="button" className="byd__back" onClick={() => setReviewing(false)}>
+              Back
             </button>
-          );
-        })}
-        {!showAllRows && current.items.length > FIRST_ROWS && (
-          <button type="button" className="byd__showall" onClick={() => setShowAllRows(true)}>
-            Show {current.items.length - FIRST_ROWS} more
+          ) : (
+            prevStep !== -1 && (
+              <button type="button" className="byd__back" onClick={() => goTo(prevStep)}>
+                Back
+              </button>
+            )
+          )}
+          <button type="button" className="save-button byd__next" onClick={advance}>
+            {isLast ? 'Build my day' : `Next: ${CADENCE_LABEL[steps[nextStep].cadence]}`}
           </button>
-        )}
-      </div>
-
-      <div className="byd__spacer" />
-      <div className="byd__actions">
-        <button type="button" className="save-button" onClick={() => advance(picked)}>
-          {isLast
-            ? `Build my day · ${total} ${total === 1 ? 'task' : 'tasks'}`
-            : `Continue to ${CADENCE_LABEL[steps[nextStep].cadence].toLowerCase()} · ${total} so far`}
-        </button>
-        <button type="button" className="byd__skip" onClick={skip}>
-          Skip {CADENCE_LABEL[current.cadence].toLowerCase()}
-        </button>
+        </div>
       </div>
     </Shell>
   );
