@@ -36,6 +36,7 @@ describe('holidays', () => {
     expect(dayOffMessage("Mia's birthday", true)).toBe("Today is Mia's birthday, enjoy your day off.");
     expect(dayOffMessage('Sick day', false)).toBe('Rest up and feel better.');
     expect(dayOffMessage(null, false)).toBe('Enjoy your day off.');
+    expect(dayOffMessage('Whiskey party', false)).toBe('Whiskey party · Enjoy your day off.');
   });
 });
 

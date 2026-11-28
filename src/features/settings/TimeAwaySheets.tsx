@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Icon } from '../../ui';
 import { Sheet } from '../../ui/BottomSheet';
+import { DateField } from '../../ui/DateField';
 import { db } from '../../data/db';
 import { cancelDayOff, takeDayOff } from '../../data/today';
 import { addDays, weekdayDate, type Day } from '../../domain/dates';
@@ -143,14 +144,14 @@ function PlanDaysOff({ today, yearlyCount, onClose }: { today: Day; yearlyCount:
         .sort((a, b) => a.startDate.localeCompare(b.startDate)),
     [earliest],
   );
-  const [date, setDate] = useState('');
-  const [reason, setReason] = useState<Reason | null>(null);
+  const [date, setDate] = useState<Day | ''>('');
+  const [label, setLabel] = useState('');
 
   const add = async () => {
     if (!date || date < earliest) return;
-    await takeDayOff(date, reason);
+    await takeDayOff(date, label.trim() || null);
     setDate('');
-    setReason(null);
+    setLabel('');
   };
 
   return (
@@ -163,22 +164,18 @@ function PlanDaysOff({ today, yearlyCount, onClose }: { today: Day; yearlyCount:
       <div className="dayoff-plan">
         <label className="field">
           <span className="field__label">Date</span>
-          <span className="date-field">
-            <input
-              className={date ? 'text-input' : 'text-input is-empty'}
-              type="date"
-              min={earliest}
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-            {!date && (
-              <span className="date-field__placeholder" aria-hidden>
-                Choose a date
-              </span>
-            )}
-          </span>
+          <DateField value={date} min={earliest} onChange={setDate} />
         </label>
-        <ReasonPicker value={reason} onChange={setReason} />
+        <label className="field">
+          <span className="field__label">What&rsquo;s the day? (optional)</span>
+          <input
+            className="text-input"
+            value={label}
+            placeholder="Brunch, a party, a trip to the city"
+            onChange={(e) => setLabel(e.target.value)}
+            enterKeyHint="done"
+          />
+        </label>
         <button type="button" className="outline-button outline-button--wide" disabled={!date} onClick={add}>
           Add day off
         </button>

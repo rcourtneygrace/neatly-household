@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Sheet } from '../../ui/BottomSheet';
+import { DateField } from '../../ui/DateField';
 import { endVacation, startVacation } from '../../data/today';
 import type { VacationPeriod } from '../../data/types';
 import { addDays, daysBetween, weekdayDate, type Day } from '../../domain/dates';
@@ -61,24 +62,21 @@ function VacationForm({ today, existing, onClose }: { today: Day; existing?: Vac
         <div className="vac-form__dates">
           <label className="field">
             <span className="field__label">Leaving</span>
-            <input
-              className="text-input"
-              type="date"
+            <DateField
               value={leaving}
               min={started ? undefined : today}
               disabled={started}
-              onChange={(e) => e.target.value && setLeaving(e.target.value)}
+              onChange={(d) => d && setLeaving(d)}
             />
           </label>
           <label className="field">
             <span className="field__label">Back on</span>
-            <input
-              className={notSure ? 'text-input is-muted' : 'text-input'}
-              type="date"
+            <DateField
               value={notSure ? '' : back}
+              placeholder="Not sure yet"
               min={addDays(leaving, 1)}
               disabled={notSure}
-              onChange={(e) => e.target.value && setBack(e.target.value)}
+              onChange={(d) => d && setBack(d)}
             />
           </label>
         </div>

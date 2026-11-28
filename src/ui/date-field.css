@@ -1,0 +1,54 @@
+.date-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--border-input);
+  border-radius: 10px;
+  background: var(--surface-white);
+}
+.date-box:focus-within {
+  border: 1.5px solid var(--brand-teal);
+}
+.date-box.is-disabled {
+  background: var(--surface-row);
+}
+.date-box__face {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: var(--fs-body-15);
+  color: var(--text-ink);
+}
+.date-box__face.is-empty,
+.date-box.is-disabled .date-box__face {
+  color: var(--text-muted);
+}
+.date-box__icon {
+  flex-shrink: 0;
+  color: var(--brand-teal);
+}
+.date-box.is-disabled .date-box__icon {
+  color: var(--text-muted);
+}
+/* The real input covers the box, invisible; 16px stops iPhone zooming in on tap */
+.date-box__native {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  font-size: 16px;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+.date-box__native:disabled {
+  cursor: default;
+}

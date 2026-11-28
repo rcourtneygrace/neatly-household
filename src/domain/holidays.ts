@@ -94,6 +94,7 @@ export function dayOffMessage(label: string | null | undefined, isYearly: boolea
   const reason = DAY_OFF_REASONS.find((r) => r.label === label);
   if (reason) return reason.message;
   if (label && isYearly) return `Today is ${yourName(label)}, enjoy your day off.`;
+  if (label) return `${label} · Enjoy your day off.`;
   return 'Enjoy your day off.';
 }
 

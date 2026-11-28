@@ -125,25 +125,6 @@
   color: var(--text-muted);
 }
 
-.date-field {
-  position: relative;
-  display: block;
-}
-.date-field__placeholder {
-  position: absolute;
-  top: 0;
-  left: 15px;
-  line-height: 48px;
-  font-size: var(--fs-body-15);
-  color: var(--text-muted);
-  pointer-events: none;
-}
-.date-field .is-empty:not(:focus) {
-  color: transparent;
-}
-.date-field input:focus + .date-field__placeholder {
-  display: none;
-}
 
 /* A short note that fades after a few seconds, above the tab bar area */
 .settings__toast {
