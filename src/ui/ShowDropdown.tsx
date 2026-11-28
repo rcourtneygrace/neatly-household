@@ -15,8 +15,8 @@ interface Props {
   onChange: (value: string) => void;
 }
 
-/** The "Show" filter dropdown (Records tab: show open, Figma 6:207). */
-export function ShowDropdown({ label = 'Show', value, options, onChange }: Props) {
+/** The filter dropdown (Records tab, Figma 6:207). The label is for screen readers only. */
+export function ShowDropdown({ label = 'Show records', value, options, onChange }: Props) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const listId = useId();
@@ -38,7 +38,7 @@ export function ShowDropdown({ label = 'Show', value, options, onChange }: Props
 
   return (
     <div className="show-dropdown" ref={wrapRef}>
-      <span className="show-dropdown__label" id={`${listId}-label`}>
+      <span className="visually-hidden" id={`${listId}-label`}>
         {label}
       </span>
       <button

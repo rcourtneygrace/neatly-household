@@ -4,6 +4,9 @@
   padding-bottom: calc(var(--nav-height) + 68px + 28px);
 }
 .records-controls {
+  /* Above the sticky category bands, so the open list is never covered */
+  position: relative;
+  z-index: 6;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -54,8 +57,18 @@
   position: sticky;
   top: var(--safe-top);
   z-index: 5;
-  /* hides rows sliding past the space above the band, up to the top of the screen */
-  box-shadow: 0 calc(-1 * var(--safe-top) - 8px) 0 calc(var(--safe-top) - 8px) var(--surface-white);
+}
+/* A white cover over the status bar area, so rows scrolling up pass under it, not over the band */
+.records-screen::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 7;
+  height: var(--safe-top);
+  background: var(--surface-white);
+  pointer-events: none;
 }
 .records-group__rows {
   display: flex;
